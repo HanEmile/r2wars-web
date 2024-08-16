@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -284,7 +285,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 		// if we've got a password, hash it and compare it with the stored one
 		if password != "" {
-			passwordHash := argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
+			passwordHash := argon2.IDKey([]byte(password), []byte(os.Getenv("SALT")), 1, 64*1024, 4, 32)
 
 			// check if it's valid
 			valid := UserCheckPasswordHash(username, passwordHash)
@@ -379,7 +380,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 		// if we've got a password, hash it and store it and create a User
 		if password1 != "" {
-			passwordHash := argon2.IDKey([]byte(password1), []byte(salt), 1, 64*1024, 4, 32)
+			passwordHash := argon2.IDKey([]byte(password1), []byte(os.Getenv("SALT")), 1, 64*1024, 4, 32)
 
 			_, err := UserRegister(username, passwordHash)
 			if err != nil {
@@ -630,7 +631,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 		// first update the password, as they might have also changed their
 		// username
 		if password1 != "" {
-			passwordHash := argon2.IDKey([]byte(password1), []byte(salt), 1, 64*1024, 4, 32)
+			passwordHash := argon2.IDKey([]byte(password1), []byte(os.Getenv("SALT")), 1, 64*1024, 4, 32)
 
 			err := UserUpdatePasswordHash(orig_username, passwordHash)
 			if err != nil {

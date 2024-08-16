@@ -112,7 +112,7 @@ type State struct {
 }
 
 func NewState() (*State, error) {
-	db, err := sql.Open("sqlite3", database_file)
+	db, err := sql.Open("sqlite3", databasePath)
 	if err != nil {
 		log.Println("Error opening the db: ", err)
 		return nil, err

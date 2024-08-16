@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {}, lib }:
+{ pkgs ? import <nixpkgs> {}, lib ? pkgs.lib, ... }:
 
 pkgs.buildGoModule rec {
   name = "r2wars-web-${version}";
@@ -9,6 +9,11 @@ pkgs.buildGoModule rec {
 
   CGO_ENABLED=0;
 
+  subPackages = [ "src" ];
+  postInstall = ''
+    mv $out/bin/src $out/bin/r2wars-web
+  '';
+  
   meta = {
     description = "A golang implementation of r2wars";
     homepage = "https://r2wa.rs";

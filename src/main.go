@@ -12,8 +12,10 @@ import (
 
 var host string
 var port int
+var logFilePath string
+var databasePath string
+var sessiondbPath string
 
-const database_file string = "main.db"
 const salt = "oogha3AiH7taimohreeH8Lexoonea5zi"
 
 var (
@@ -21,10 +23,15 @@ var (
 )
 
 func initFlags() {
-	flag.StringVar(&host, "host", "127.0.0.1", "the host to listen on")
-	flag.StringVar(&host, "h", "127.0.0.1", "the host to listen on (shorthand)")
-	flag.IntVar(&port, "port", 8080, "the port to listen on")
-	flag.IntVar(&port, "p", 8080, "the port to listen on (shorthand)")
+	flag.StringVar(&host, "host", "127.0.0.1", "The host to listen on")
+	flag.StringVar(&host, "h", "127.0.0.1", "The host to listen on (shorthand)")
+
+	flag.IntVar(&port, "port", 8080, "The port to listen on")
+	flag.IntVar(&port, "p", 8080, "The port to listen on (shorthand)")
+
+	flag.StringVar(&logFilePath, "logfilepath", "./server.log", "The path to the log file")
+	flag.StringVar(&databasePath, "databasepath", "./main.db", "The path to the main database")
+	flag.StringVar(&sessiondbPath, "sessiondbpath", "./sesions.db", "The path to the session database")
 }
 
 func main() {
@@ -33,7 +40,7 @@ func main() {
 
 	// log init
 	log.Println("[i] Setting up logging...")
-	logFile, err := os.OpenFile("server.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0664)
+	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0664)
 	if err != nil {
 		log.Fatal("Error opening the server.log file: ", err)
 	}
@@ -49,7 +56,7 @@ func main() {
 
 	// session init
 	log.Println("[i] Setting up Session Storage...")
-	store, err := NewSqliteStore("./sessions.db", "sessions", "/", 3600, []byte(os.Getenv("SESSION_KEY")))
+	store, err := NewSqliteStore(sessiondbPath, "sessions", "/", 3600, []byte(os.Getenv("SESSION_KEY")))
 	if err != nil {
 		panic(err)
 	}
