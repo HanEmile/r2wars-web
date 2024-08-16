@@ -1,6 +1,6 @@
 module git.emile.space/r2wars-web
 
-go 1.22.5
+go 1.22.3
 
 require (
 	github.com/gorilla/handlers v1.5.2
