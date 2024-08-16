@@ -1,0 +1,68 @@
+{{ define "index" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+  {{ if .logged_in }}{{ else }}
+  {{ end }}
+
+  <span id="r2wars"></span>
+  <h1><a href="#r2wars">r2wa.rs</a></h1>
+
+  {{ if .err }}
+    <div class="error">{{ .err }}</div>
+  {{ end }}
+
+
+  This is the r2wars web platform. Here, you can manage your bots and let them
+  "fight" (be executed) in the same memory space as others.
+
+  Under the hood, the <a href="https://radare.org/n/">radare2</a> <a href="https://book.rada.re/emulation/intro.html">ESIL Emulation</a> is used to allow all fun combinations!
+
+  <span id="r2wars"></span>
+  <h2><a href="#r2wars">What is it and how does it work?</a></h2>
+
+  Essentially
+  <br><br>
+
+  <pre class="code">
+  ; r2 malloc://1024                           # allocate 1KB of memory
+  [0x00000000]> e asm.arch = x86               # define the arch to use
+  [0x00000000]> e asm.bits = 32                # define the bits to use
+  [0x00000000]> aei                            # init vm
+  [0x00000000]> aeim                           # init staack
+  [0x00000000]> waf bot.asm                    # write bot to memory
+  [0x00000000]> aer PC = 0x100                 # set program counter
+  [0x00000000]> aer SP = SP + 0x100            # set stack pointer
+  [0x00000000]> e cmd.esil.todo=f theend=1     # define end condition
+  [0x00000000]> e cmd.esil.trap=f theend=1     # define end condition
+  [0x00000000]> e cmd.esil.intr=f theend=1     # define end condition
+  [0x00000000]> e cmd.esil.ioer=f theend=1     # define end condition
+  [0x00000000]> f theend=0                     # set the end flag to 0
+  [0x00000000]> aes                            # step
+  [0x00000000]> ?v 1+theend                    # check if the end cond. is met
+  ..                                           # in a loop
+  [0x00000000]> aes                            # step
+  [0x00000000]> ?v 1+theend                    # check if the end cond. is met
+  </pre>
+
+  <br>
+  More info in the following blogpost: <a href="https://emile.space/blog/2020/r2wars/">https://emile.space/blog/2020/r2wars/</a>
+  <br>
+  <br>
+
+  <pre>
+╭──╮    ╭──────────────────────╮
+│ _│_   │                      │
+│ O O  <  LET THE GAMES BEGIN! │
+│  │╷   │                      │
+│  ││   ╰──────────────────────╯
+│ ─╯│
+╰───╯
+  </pre>
+
+
+
+</body>
+{{ template "footer" . }}
+{{ end }}

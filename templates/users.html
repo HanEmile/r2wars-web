@@ -1,0 +1,17 @@
+{{ define "users" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="users"></span>
+  <h1><a href="#users">All users</a></h1>
+
+  <ul>
+  {{ range $user := .users }}
+    <li>- <a href="/user/{{ $user.ID }}">{{ $user.Name }}</a></li>
+  {{ end }}
+  </ul>
+</div>
+{{ template "footer" . }}
+{{ end }}

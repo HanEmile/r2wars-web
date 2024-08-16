@@ -1,0 +1,46 @@
+{{ define "profile" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="profile"></span>
+  <h1><a href="#profile">Profile</a></h1>
+
+  {{ if .err }}
+    ERROR: {{ .err }}!
+    <a href="/user/{{ .user.ID }}/profile">Edit your userpage here</a>
+    or 
+    <a href="/user/{{ .target_user.ID }}">Visit the userpage of that user</a>
+  {{ else }}
+  You can edit your profile below:
+  <br> <br>
+  <form method="POST" action="/user/{{ .user.ID }}/profile">
+    <table>
+
+    <tr>
+      <td><label for="username">Name:</label></td>
+      <td><input type="text" id="username" name="username" value={{ .user.Name }}><br><br></td>
+    </tr>
+
+    <tr>
+      <td><label for="password1">Password</label></td>
+      <td><input type="password" id="password1" name="password1"><br></td>
+    </tr>
+
+    <tr>
+      <td><label for="password2">Repeat Password</label></td>
+      <td><input type="password2" id="password2" name="password2"><br></td>
+    </tr>
+
+    <tr>
+      <td></td>
+      <td><br><input type="submit" value="Submit"></td>
+    </tr>
+
+    </table>
+  </form>
+  {{ end }}
+</div>
+{{ template "footer" . }}
+{{ end }}

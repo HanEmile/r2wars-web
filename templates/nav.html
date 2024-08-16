@@ -1,0 +1,74 @@
+{{ define "nav" }}
+  <header>
+    <p style="margin: 1ex 0; display: block; width: 100%; background-color: red; color: white;">
+      EARLY BETA - Data can be deleted at random!
+    </p>
+
+    <a href="/">r2wa.rs</a>
+    <a class="local" href="https://emile.space">emile.space</a>
+  </header>
+  <nav>
+  
+    <ul>
+      {{ if .pagelink1 }}
+      <li>
+        <a class="local" href="{{ .pagelink1.Target }}">{{ .pagelink1.Name }}</a>
+        <ul>
+          {{ if .pagelink1options }}
+          {{ range $opt := .pagelink1options }}
+          <li><a class="local" href="{{ $opt.Target }}">{{ $opt.Name }}</a></li>
+          {{ end }}
+          {{ end }}
+        </ul>
+      </li>
+      {{ end }}
+      {{ if .pagelink2 }}
+      <li>
+        <a class="local" href="{{ .pagelink1.Target }}{{ .pagelink2.Target }}">{{ .pagelink2.Name }}</a>
+        <ul>
+          {{ if .pagelink2options }}
+          {{ range $opt := .pagelink2options }}
+          <li><a class="local" href="{{ $.pagelink1.Target }}{{ $opt.Target }}">{{ $opt.Name }}</a></li>
+          {{ end }}
+          {{ end }}
+        </ul>
+      </li>
+      {{ end }}
+      {{ if .pagelink3 }}
+      <li>
+        <a class="local" href="{{ .pagelink1.Target }}{{ .pagelink2.Target }}{{ .pagelink3.Target }}">{{ .pagelink3.Name }}</a>
+        <ul>
+          {{ if .pagelink3options }}
+          {{ range $opt := .pagelink3options }}
+          <li><a class="local" href="{{ $.pagelink1.Target }}{{ $.pagelink2.Target }}{{ $opt.Target }}">{{ $opt.Name }}</a></li>
+          {{ end }}
+          {{ end }}
+        </ul>
+      </li>
+      {{ end }}
+    </ul>
+    <ul style="float: right">
+        <li>
+            <a href="https://git.emile.space/r2wars-web">src</a>
+        </li>
+    </ul>
+  </nav>
+  <ul>
+    {{ if .user }}
+    {{ if .pagelinknext }}{{ range $opt := .pagelinknext }}
+  	  <li><a class="local" href="{{ if $.pagelink1}}{{ $.pagelink1.Target }}{{ end }}{{ if $.pagelink2 }}{{ $.pagelink2.Target }}{{ end }}{{ if $.pagelink3 }}{{ $.pagelink3.Target }}{{ end }}{{ $opt.Target }}">{{ $opt.Name }}</a></li></li>
+    {{ end }}{{ end }}
+    {{ else }}
+    {{ if .pagelinkauth }}{{ range $opt := .pagelinkauth}}
+  	  <li><a class="local" href="{{ $opt.Target }}">{{ $opt.Name }}</a></li></li>
+    {{ end }}{{ end }}
+    {{ end }}
+
+    {{ if .user }}
+    <li style="float: right"><form method="POST" action="/logout"><input class="border" type="submit" value="Logout"></form></li>
+	  <li style="float: right; padding-right: 1ex"><a href="/user/{{ .user.ID }}/profile">{{ .user.Name }}</a></li></li>
+    {{ end }}
+  </ul>
+	<br>
+{{ end }}
+

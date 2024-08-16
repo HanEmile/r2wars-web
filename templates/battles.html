@@ -1,0 +1,27 @@
+{{ define "battles" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="allbattles"></span>
+  <h1><a href="#allbattles">All Battles</a></h1>
+
+  <p>A battle is a collection of matches. It plays through all matches in the elimination ladder in order to determine an overall winner.</p>
+  <br>
+
+  <table class="trhover">
+  {{ range $battle := .battles }}
+    <tr>
+      <td>
+        - <a href="/battle/{{ $battle.ID }}">{{ $battle.Name }}</a>
+      </td>
+      <td>
+        {{ range $idx, $bot := $battle.Bots }}{{if $idx}},{{end}}<a href="/user/{{ $bot.ID }}">{{ $bot.Name }}</a>{{ end }}
+      </td>
+    </tr>
+  {{ end }}
+  </table>
+</body>
+{{ template "footer" . }}
+{{ end }}

@@ -1,0 +1,69 @@
+{{ define "botNew" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="newbot"></span>
+  <h1><a href="#newbot">New Bot</a></h1>
+  
+  This is the page on which you can submit your bots
+
+  <form method="POST" action="/bot/new">
+    <table>
+      <tr>
+        <td><label for="name">Name:</label></td>
+        <td><input class="border" type="text" id="name" name="name"></td>
+      </tr>
+
+      <tr>
+        <td>Archs</td>
+        <td>
+          {{ range $idx, $arch := .archs }}{{if $idx}},{{end}}
+            <input
+              type="checkbox"
+              class="check-with-label"
+              name="arch-{{$arch.ID}}"
+              id="arch-{{$arch.ID}}"/>
+            <label class="label-for-check" for="arch-{{$arch.ID}}">{{$arch.Name}}</label>
+          {{- end }}
+        </td>
+      </td>
+
+      <tr>
+        <td>Bits</td>
+        <td>{{ range $idx, $bit := .bits }}{{if $idx}},{{end}}
+          <input
+            type="checkbox"
+            class="check-with-label"
+            id="bit-{{$bit.ID}}"
+            name="bit-{{$bit.ID}}"/>
+          <label class="label-for-check" for="bit-{{$bit.ID}}">{{$bit.Name}}</label>
+          {{- end }}
+        </td>
+      </td>
+
+      <tr>
+        <td><label for="source">Source:</label></td>
+        <td><textarea
+              class="border"
+              id="source"
+              name="source"
+              cols="80"
+              rows="15"></textarea></td>
+      </tr>
+
+      <tr>
+        <td></td>
+        <td><input type="submit" value="Submit"></td>
+      </tr>
+
+      <tr>
+        <td></td>
+        <td>{{ .res }}</td>
+      </tr>
+    </table>
+  </form>
+</body>
+{{ template "footer" . }}
+{{ end }}

@@ -1,0 +1,79 @@
+{{ define "battleNew" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="newbattle"></span>
+  <h1><a href="#newbattle">New battle</a></h1>
+  
+  <p>This is the page on which you can create a battle. Select the values you find appropriate.
+   Bots can be added to the battle later.</p>
+
+  <br>
+
+  <table>
+    <form id="battle" method="POST" action="/battle/new">
+      <tr>
+        <td><label for="name">Name:</label></td>
+        <td><input class="border" type="text" id="name" name="name" autofocus></td>
+      </tr>
+
+      <tr>
+        <td>Archs:</td>
+        <td>{{ range $idx, $arch := .archs }}{{ if $idx }},{{ end }}
+          <input
+            type="checkbox"
+            class="check-with-label"
+            name="arch-{{$arch.ID}}"
+            id="arch-{{$arch.ID}}"
+            form="battle"
+            {{if eq $arch.Name "x86-64"}}checked{{end}}
+            {{if eq $arch.Name "ARM"}}checked{{end}}/>
+          <label class="label-for-check" for="arch-{{$arch.ID}}">{{$arch.Name}}</label>
+          {{- end }}
+        </td>
+      </td>
+
+      <tr>
+        <td>Bits:</td>
+        <td>
+          {{ range $idx, $bit := .bits}}{{if $idx}},{{end}}
+          <input
+            type="checkbox"
+            class="check-with-label"
+            name="bit-{{$bit.ID}}"
+            id="bit-{{$bit.ID}}"
+            {{if eq $bit.Name "32"}}checked{{end}}
+            {{if eq $bit.Name "64"}}checked{{end}}/>
+          <label class="label-for-check" for="bit-{{$bit.ID}}">{{$bit.Name}}</label>
+          {{- end }}
+        </td>
+      </td>
+
+      <tr>
+        <td>Public:</td>
+        <td>
+          <input
+            type="checkbox"
+            name="public"
+            id="public"/>
+        </td>
+      </td>
+
+      <tr>
+        <td></td>
+        <td><input class="border" type="submit" value="Create"></td>
+      </tr>
+
+      {{ if .res }}
+      <tr>
+        <td></td>
+        <td>{{ .res }}</td>
+      </tr>
+      {{ end }}
+    </form>
+  </table>
+</body>
+{{ template "footer" . }}
+{{ end }}

@@ -1,0 +1,24 @@
+{{ define "bots" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="allbots"></span>
+  <h1><a href="#allbots">All Bots</a></h1>
+
+  <table class="trhover">
+  {{ range $bot := .bots }}
+    <tr>
+      <td>
+        <a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>
+      </td>
+      <td>
+        {{ range $idx, $usr := $bot.Users }}{{if $idx}},{{end}}<a href="/user/{{ $usr.ID }}">{{ $usr.Name }}</a>{{ end }}
+      </td>
+    </tr>
+  {{ end }}
+  </table>
+</body>
+{{ template "footer" . }}
+{{ end }}

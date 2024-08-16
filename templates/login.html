@@ -1,0 +1,41 @@
+{{ define "login" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="login"></span>
+  <h1><a href="#login">Login</a></h1>
+
+  {{ if .err }}{{ .err }}{{ end }}
+  {{ if .logged_in }}
+  Already logged in! <a href="/">Return home</a>
+  {{ else }}
+  <form method="POST" action="/login">
+
+    <table>
+      <tr>
+        <td><label for="username">Name:</label></td>
+        <td><input class="border" type="text" id="username" name="username" autofocus></td>
+      </tr>
+      <tr>
+        <td><label for="password">Password:</label></td>
+        <td><input class="border" type="password" id="password" name="password"></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td><input class="border" type="submit" value="Login"></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>{{ .res }}</td>
+      </tr>
+    </table>
+  </form>
+  Not registered yet? <a href="/register">Register Now!</a>
+  {{ end }}
+
+  
+</body>
+{{ template "footer" . }}
+{{ end }}

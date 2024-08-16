@@ -1,0 +1,19 @@
+{{ define "user" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="user"></span>
+  <h1><a href="#user">{{ .targetUser.Name }}'s Bots</a></h1>
+
+  This is just a list of all bots belonging to the given user
+
+  <ul>
+  {{ range $bot := .bots }}
+    <li>- <a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a></li>
+  {{ end }}
+  </ul>
+</div>
+{{ template "footer" . }}
+{{ end }}

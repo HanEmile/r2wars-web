@@ -1,0 +1,102 @@
+{{ define "botSingle" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="bot"></span>
+  <h1><a href="#bot">{{ .bot.Name }}</a></h1>
+
+  <form method="POST" action="/bot/{{ .bot.ID }}">
+    <table>
+      {{ if .editable }}
+      <tr>
+        <td><label for="name">Name:</label></td>
+        <td><input class="border" type="text" id="name" name="name" value="{{ .bot.Name }}"></td>
+      </tr>
+      {{ else }}
+      {{ end }}
+
+      <tr>
+        <td>Archs</td>
+        <td>
+          {{ range $idx, $arch := .archs }}{{if $idx}},{{end}}
+            <input
+              type="checkbox"
+              class="check-with-label"
+              name="arch-{{$arch.ID}}"
+              id="arch-{{$arch.ID}}"
+              {{if $arch.Enabled}}checked{{end}}
+              {{if $.editable}}{{else}}disabled="disabled"{{end}}/>
+            <label class="label-for-check" for="arch-{{$arch.ID}}">{{$arch.Name}}</label>
+          {{- end }}
+        </td>
+      </td>
+
+      <tr>
+        <td>Bits</td>
+        <td>{{ range $idx, $bit := .bits }}{{if $idx}},{{end}}
+          <input
+            type="checkbox"
+            class="check-with-label"
+            id="bit-{{$bit.ID}}"
+            name="bit-{{$bit.ID}}"
+            {{if $bit.Enabled}}checked{{end}}
+            {{if $.editable}}{{else}}disabled="disabled"{{end}}/>
+          <label class="label-for-check" for="bit-{{$bit.ID}}">{{$bit.Name}}</label>
+          {{- end }}
+        </td>
+      </td>
+
+      <tr>
+        <td><label for="source">Source:</label></td>
+        <td><textarea
+          id="source"
+          name="source"
+          cols="80"
+          rows="15"
+          {{ if .editable }}{{ else }}readonly{{ end }}
+        >{{ .bot.Source }}</textarea></td>
+      <tr>
+
+      {{ if .editable }}
+      <tr>
+        <td></td>
+        <td><input class="border" type="submit" value="Save"></td>
+      </tr>
+      {{ else }}
+      {{ end }}
+
+      <tr>
+        <td></td>
+        <td>{{ .res }}</td>
+      </tr>
+
+      <tr><td><hr></td><td><hr></td></tr>
+
+      <tr>
+        <td>CMD</td>
+        <td>{{ .bytecode_r2cmd }}</td>
+      </tr>
+      <tr>
+        <td>Bytecode</td>
+        <td>{{ .bytecode }}</td>
+      </tr>
+
+      <tr><td><hr></td><td><hr></td></tr>
+
+      <tr>
+        <td>CMD</td>
+        <td>{{ .disasm_r2cmd }}</td>
+      </tr>
+      <tr>
+        <td>Disasm</td>
+        <td><pre>{{ .disasm }}</pre></td>
+      </tr>
+
+    <table>
+  </form>
+
+</body>
+{{ template "footer" . }}
+{{ end }}

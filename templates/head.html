@@ -1,0 +1,127 @@
+{{ define "head" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>r2wa.rs</title>
+
+  <style>
+* { word-wrap:break-word !important; font-family: monospace; margin: 0; padding: 0; }
+
+/* light/darktheme specific foo */
+@media (prefers-color-scheme: light) {
+  html { background: #fafafa; color: #040404; }
+  a:hover { color: #fafafa; background: #040404 }
+  a:not([href*="webring.xxiivv.com"]):hover, nav a:active { color: #fafafa; background: #040404 }
+  a { color: #040404; background: #fafafa; text-decoration: none;}
+  nav a:hover, a:active { color: #fafafa; background: #040404 }
+  nav { margin: 1ex 0; background: #eeeeee; }
+  nav a { display:block; background: #eeeeee; }
+  h1 { margin: 3ex 0 1ex 0; width: 100%; background-color: #eeeeee}
+  h2 { margin: 2ex 0 1ex 0; width: 100%; background-color: #eeeeee}
+  h3 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; background-color: #eeeeee}
+  h4 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; /*background-color: #fafafa*/}
+  h5 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; /*background-color: #fafafa*/}
+  .code { border-left: 1px solid #040404; margin-left: 2ex; padding-left: 1ex; }
+  .trhover tr:hover { border-bottom: 1px solid #dddddd; }
+
+  /* add an outline while hovering, the !important makes hovering on checked elements still visible */
+  .check-with-label:checked + .label-for-check { background-color: #040404; color: #eeeeee !important; }
+  .check-with-label:hover + .label-for-check { outline: 1px solid #040404; color: #040404; }
+
+  .border { outline: 1px solid #040404; border: none; }
+}
+@media (prefers-color-scheme: dark) {
+  html { background: #040404; color: #c0c0c0; }
+  a:hover { color: #040404; background: #c0c0c0 }
+  body nav a:not([href*="webring.xxiivv.com"]):hover, nav a:active { color: #c0c0c0; background: #040404 }
+  a { color: #c0c0c0; background: #040404; text-decoration: none; }
+  nav a:hover, a:active { color: #040404; background: #c0c0c0 }
+  nav { margin: 1ex 0; background: #c0c0c0; }
+  nav a { display:block; background: #c0c0c0; }
+  h1 { margin: 3ex 0 1ex 0; width: 100%; background-color: #c0c0c0}
+  h2 { margin: 2ex 0 1ex 0; width: 100%; background-color: #c0c0c0}
+  h3 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; background-color: #c0c0c0}
+  h4 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; /*background-color: #c0c0c0*/}
+  h5 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; /*background-color: #c0c0c0*/}
+  .code { border-left: 1px solid #c0c0c0; margin-left: 2ex;  padding-left: 1ex; }
+  .webring { -webkit-filter: invert(100%); filter: invert(100%); }
+  .trhover tr:hover { background: #c0c0c0; color: #040404; }
+
+  /* add an outline while hovering, the !important makes hovering on checked elements still visible */
+  .check-with-label:checked + .label-for-check { background-color: #c0c0c0; color: #040404 !important; }
+  .check-with-label:hover + .label-for-check { outline: 1px solid #c0c0c0; color: #c0c0c0; }
+
+  input, textarea { background-color: #c0c0c0; }
+  .border { outline: 1px solid #c0c0c0; border: none; }
+}
+
+/* settings for mobile devices*/
+@media only screen and (max-width: 768px) {
+  body { margin: 1ex; width: calc(100% - 2ex) !important; }
+  img { max-width: 100% !important; max-height: 500px; }
+}
+img { max-width: 100ex; max-height: 500px; }
+
+body { margin-left: auto; margin-right: auto; margin-top: 1ex; margin-bottom: 1ex; width: 100ex; }
+
+.webring { align: right; }
+a .webring { float: right; }
+
+/* display local links using [] and external links using {} */
+body a:not(h1 a, h2 a, h3 a,h4 a):not([href*="webring.xxiivv.com"]):not([class*="local"]):before { content: "["; }
+body a:not(h1 a, h2 a, h3 a,h4 a):not([href*="webring.xxiivv.com"]):not([class*="local"]):after { content: "]"; }
+a[href*="//"]:not([href*="r2wa.rs"]):not([class*="icon"]):before { content: '{'; }
+a[href*="//"]:not([href*="r2wa.rs"]):not([class*="icon"]):after { content: '}'; }
+
+table { width: 100%; }
+input, textarea { width: 100%; }
+textarea { padding: 0.5ex; }
+
+ul { list-style-type: none; }
+
+/* navigation bar magic */
+nav * { color: #040404; }
+nav ul { list-style: none; position: relative; display: inline-block; }
+nav ul li { display:inline-block; }
+nav ul ul { display: none; position: absolute; outline: 1px solid #040404; background-color: #ff0; }
+nav ul ul li { width: 100%; padding-right: 1ex; float:none; display:list-item; position: relative; }
+nav + ul li { display: inline-block;}
+
+/* only display the hover dropdown on non-mobile devices */
+@media only screen and (min-width: 768px) {
+  nav ul li:hover a + ul { display: inherit; white-space: nowrap; }
+}
+
+/* nav bar spacing char */
+nav ul li > a::after { content: " /"; }
+nav ul li > a:only-child::after { content: ""; }
+nav ul li:last-of-type a::after { content: ""; }
+
+h1 a, h2 a, h3 a { padding-right: 1ex; }
+
+pre { white-space: pre-wrap; hyphens: auto; }
+pre.code { white-space: pre-wrap; hyphens: none; }
+
+/* display the list of folders in the current one as a vertical list, if the
+ * .vert class is present */
+nav + ul.vert li { display: block; }
+
+.w-100 { width: 100%; }
+
+.check-with-label { display: none; }
+
+body table tbody tr td { padding-bottom: 0.5ex; vertical-align: top; }
+body table tbody tr td:not(:last-child) { padding-right: 1ex; }
+
+tr { text-wrap: wrap;}
+
+input { padding-left: 0.5ex; }
+input:focus { outline-offset: 0px; }
+textarea:focus { outline-offset: 0px; }
+
+  </style>
+</head>
+{{ end }}
