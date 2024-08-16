@@ -15,6 +15,7 @@ var port int
 var logFilePath string
 var databasePath string
 var sessiondbPath string
+var templatesPath string
 
 const salt = "oogha3AiH7taimohreeH8Lexoonea5zi"
 
@@ -32,6 +33,7 @@ func initFlags() {
 	flag.StringVar(&logFilePath, "logfilepath", "./server.log", "The path to the log file")
 	flag.StringVar(&databasePath, "databasepath", "./main.db", "The path to the main database")
 	flag.StringVar(&sessiondbPath, "sessiondbpath", "./sesions.db", "The path to the session database")
+	flag.StringVar(&sessiondbPath, "sessiondbpath", "./templates", "The path to the templates used")
 }
 
 func main() {
@@ -71,7 +73,7 @@ func main() {
 	r.HandleFunc("/", indexHandler)
 	r.HandleFunc("/login", loginHandler)
 	r.HandleFunc("/register", registerHandler)
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	// r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	// endpoints with auth needed
 	auth_needed := r.PathPrefix("/").Subrouter()

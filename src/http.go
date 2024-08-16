@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 )
@@ -40,7 +41,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get the template
-		t, err := template.ParseGlob("./templates/*.html")
+		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))

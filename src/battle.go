@@ -364,7 +364,7 @@ func battlesHandler(w http.ResponseWriter, r *http.Request) {
 		data["battles"] = battles
 
 		// get the template
-		t, err := template.ParseGlob("./templates/*.html")
+		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
@@ -427,7 +427,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get the template
-		t, err := template.ParseGlob("./templates/*.html")
+		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
@@ -628,7 +628,7 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get the template
-		t, err := template.ParseGlob("./templates/*.html")
+		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
