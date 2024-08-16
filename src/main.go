@@ -17,8 +17,6 @@ var databasePath string
 var sessiondbPath string
 var templatesPath string
 
-const salt = "oogha3AiH7taimohreeH8Lexoonea5zi"
-
 var (
 	globalState *State
 )
