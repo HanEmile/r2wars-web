@@ -33,7 +33,7 @@ func initFlags() {
 	flag.StringVar(&logFilePath, "logfilepath", "./server.log", "The path to the log file")
 	flag.StringVar(&databasePath, "databasepath", "./main.db", "The path to the main database")
 	flag.StringVar(&sessiondbPath, "sessiondbpath", "./sesions.db", "The path to the session database")
-	flag.StringVar(&sessiondbPath, "sessiondbpath", "./templates", "The path to the templates used")
+	flag.StringVar(&templatesPath, "templatespath", "./templates", "The path to the templates used")
 }
 
 func main() {
