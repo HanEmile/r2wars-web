@@ -24,26 +24,24 @@
   Essentially
   <br><br>
 
-  <pre class="code">
-  ; r2 malloc://1024                           # allocate 1KB of memory
-  [0x00000000]> e asm.arch = x86               # define the arch to use
-  [0x00000000]> e asm.bits = 32                # define the bits to use
-  [0x00000000]> aei                            # init vm
-  [0x00000000]> aeim                           # init staack
-  [0x00000000]> waf bot.asm                    # write bot to memory
-  [0x00000000]> aer PC = 0x100                 # set program counter
-  [0x00000000]> aer SP = SP + 0x100            # set stack pointer
-  [0x00000000]> e cmd.esil.todo=f theend=1     # define end condition
-  [0x00000000]> e cmd.esil.trap=f theend=1     # define end condition
-  [0x00000000]> e cmd.esil.intr=f theend=1     # define end condition
-  [0x00000000]> e cmd.esil.ioer=f theend=1     # define end condition
-  [0x00000000]> f theend=0                     # set the end flag to 0
-  [0x00000000]> aes                            # step
-  [0x00000000]> ?v 1+theend                    # check if the end cond. is met
-  ..                                           # in a loop
-  [0x00000000]> aes                            # step
-  [0x00000000]> ?v 1+theend                    # check if the end cond. is met
-  </pre>
+  <pre class="codeline">; r2 malloc://1024                            # allocate 1KB of memory</pre>
+  <pre class="codeline">[;0x00000000]> e asm.arch = x86               # define the arch to use</pre>
+  <pre class="codeline">[;0x00000000]> e asm.bits = 32                # define the bits to use</pre>
+  <pre class="codeline">[;0x00000000]> aei                            # init vm</pre>
+  <pre class="codeline">[;0x00000000]> aeim                           # init staack</pre>
+  <pre class="codeline">[;0x00000000]> waf bot.asm                    # write bot to memory</pre>
+  <pre class="codeline">[;0x00000000]> aer PC = 0x100                 # set program counter</pre>
+  <pre class="codeline">[;0x00000000]> aer SP = SP + 0x100            # set stack pointer</pre>
+  <pre class="codeline">[;0x00000000]> e cmd.esil.todo=f theend=1     # define end condition</pre>
+  <pre class="codeline">[;0x00000000]> e cmd.esil.trap=f theend=1     # define end condition</pre>
+  <pre class="codeline">[;0x00000000]> e cmd.esil.intr=f theend=1     # define end condition</pre>
+  <pre class="codeline">[;0x00000000]> e cmd.esil.ioer=f theend=1     # define end condition</pre>
+  <pre class="codeline">[;0x00000000]> f theend=0                     # set the end flag to 0</pre>
+  <pre class="codeline">[;0x00000000]> aes                            # step</pre>
+  <pre class="codeline">[;0x00000000]> ?v 1+theend                    # check if the end cond. is met</pre>
+  <pre class="codeline">..                                            # in a loop</pre>
+  <pre class="codeline">[;0x00000000]> aes                            # step</pre>
+  <pre class="codeline">[;0x00000000]> ?v 1+theend                    # check if the end cond. is met</pre>
 
   <br>
   More info in the following blogpost: <a href="https://emile.space/blog/2020/r2wars/">https://emile.space/blog/2020/r2wars/</a>
