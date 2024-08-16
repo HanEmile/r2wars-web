@@ -1,12 +1,17 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/gorilla/mux"
 )
+
+var host string
+var port int
 
 const database_file string = "main.db"
 const salt = "oogha3AiH7taimohreeH8Lexoonea5zi"
@@ -15,7 +20,16 @@ var (
 	globalState *State
 )
 
+func initFlags() {
+	flag.StringVar(&host, "host", "127.0.0.1", "the host to listen on")
+	flag.StringVar(&host, "h", "127.0.0.1", "the host to listen on (shorthand)")
+	flag.IntVar(&port, "port", 8080, "the port to listen on")
+	flag.IntVar(&port, "p", 8080, "the port to listen on (shorthand)")
+}
+
 func main() {
+	initFlags()
+	flag.Parse()
 
 	// log init
 	log.Println("[i] Setting up logging...")
@@ -70,6 +84,6 @@ func main() {
 	auth_needed.HandleFunc("/battle/{id}", battleSingleHandler)
 	auth_needed.HandleFunc("/battle/{id}/submit", battleSubmitHandler)
 
-	log.Println("[i] HTTP Server running on port :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Printf("[i] HTTP Server running on %s:%d\n", host, port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), r))
 }
