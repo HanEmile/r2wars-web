@@ -386,6 +386,7 @@ func botsHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -523,6 +524,7 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -708,6 +710,7 @@ func botNewHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)

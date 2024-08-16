@@ -266,7 +266,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("[d] Getting the template")
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
-			log.Println("Error parsing the login template: ", err)
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -344,6 +344,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -471,6 +472,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -515,6 +517,7 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -591,6 +594,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
+			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
