@@ -226,6 +226,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// define data
 		log.Println("[d] Defining breadcrumbs")
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{"login", "/login"}
 		data["pagelink1options"] = []Link{
 			{Name: "register", Target: "/register"},
@@ -323,6 +324,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 
 		// get the session
 		session, _ := globalState.sessions.Get(r, "session")
@@ -424,6 +426,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{"user", "/user"}
 		data["pagelink1options"] = []Link{
 			{Name: "bot", Target: "/bot"},
@@ -491,6 +494,7 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{Name: "user", Target: "/user"}
 		data["pagelink1options"] = []Link{
 			{Name: "bot", Target: "/bot"},
@@ -545,6 +549,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{"user", "/user"}
 		data["pagelink1options"] = []Link{
 			{Name: "bot", Target: "/bot"},

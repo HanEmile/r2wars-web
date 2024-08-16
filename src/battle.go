@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -337,6 +338,7 @@ func battlesHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{Name: "battle", Target: "/battle"}
 		data["pagelink1options"] = []Link{
 			{Name: "bot", Target: "/bot"},
@@ -385,6 +387,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 
 		// breadcrumb foo
 		session, _ := globalState.sessions.Get(r, "session")
@@ -540,6 +543,7 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{"battle", "/battle"}
 		data["pagelink1options"] = []Link{
 			{Name: "user", Target: "/user"},

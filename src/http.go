@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 )
 
 type Link struct {
@@ -17,6 +18,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = ""
 		data["pagelinknext"] = []Link{
 			{Name: "user/", Target: "/user"},

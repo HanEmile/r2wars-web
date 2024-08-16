@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -357,6 +358,7 @@ func botsHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 
 		session, _ := globalState.sessions.Get(r, "session")
 		username := session.Values["username"]
@@ -414,6 +416,7 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{"bot", "/bot"}
 		data["pagelink1options"] = []Link{
 			{Name: "user", Target: "/user"},
@@ -475,7 +478,11 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 		allBotNames, err := BotGetAll()
 		var opts []Link
 		for _, bot := range allBotNames {
-			opts = append(opts, Link{Name: bot.Name, Target: fmt.Sprintf("/%d", bot.ID)})
+
+			// don't add the current bot to the list, we're already on that page!
+			if bot.ID != botid {
+				opts = append(opts, Link{Name: bot.Name, Target: fmt.Sprintf("/%d", bot.ID)})
+			}
 		}
 		data["pagelink2options"] = opts
 
@@ -666,6 +673,7 @@ func botNewHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// define data
 		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
 
 		session, _ := globalState.sessions.Get(r, "session")
 		username := session.Values["username"].(string)
