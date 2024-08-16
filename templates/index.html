@@ -24,6 +24,7 @@
   Essentially
   <br><br>
 
+  <div class="code">
   <pre class="codeline">; r2 malloc://1024                            # allocate 1KB of memory</pre>
   <pre class="codeline">[;0x00000000]> e asm.arch = x86               # define the arch to use</pre>
   <pre class="codeline">[;0x00000000]> e asm.bits = 32                # define the bits to use</pre>
@@ -42,6 +43,7 @@
   <pre class="codeline">..                                            # in a loop</pre>
   <pre class="codeline">[;0x00000000]> aes                            # step</pre>
   <pre class="codeline">[;0x00000000]> ?v 1+theend                    # check if the end cond. is met</pre>
+  </div>
 
   <br>
   More info in the following blogpost: <a href="https://emile.space/blog/2020/r2wars/">https://emile.space/blog/2020/r2wars/</a>
