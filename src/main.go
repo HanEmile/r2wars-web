@@ -86,9 +86,9 @@ func main() {
 	auth_needed.HandleFunc("/user/{id}", userHandler)
 	auth_needed.HandleFunc("/user/{id}/profile", profileHandler)
 
-	auth_needed.HandleFunc("/battle", battlesHandler)
+	r.HandleFunc("/battle", battlesHandler)
 	auth_needed.HandleFunc("/battle/new", battleNewHandler)
-	auth_needed.HandleFunc("/battle/{id}", battleSingleHandler)
+	r.HandleFunc("/battle/{id}", battleSingleHandler)
 	auth_needed.HandleFunc("/battle/{id}/submit", battleSubmitHandler)
 
 	log.Printf("[i] HTTP Server running on %s:%d\n", host, port)

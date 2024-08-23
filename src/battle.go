@@ -350,14 +350,19 @@ func battlesHandler(w http.ResponseWriter, r *http.Request) {
 
 		// sessions
 		session, _ := globalState.sessions.Get(r, "session")
-		username := session.Values["username"].(string)
+		username := session.Values["username"]
 
-		// get the user
-		user, err := UserGetUserFromUsername(username)
-		if err != nil {
+		if username == nil {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		} else {
+			// get the user
+			user, err := UserGetUserFromUsername(username.(string))
+			if err != nil {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+
 			data["user"] = user
 		}
 
