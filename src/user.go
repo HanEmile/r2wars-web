@@ -151,6 +151,7 @@ func (s *State) GetUserFromUsername(username string) (User, error) {
 }
 
 // Returns the bots belonging to the given user
+// TODO(emile): Also fetch the bits and the archs for displaying in the single battle page. In order to do so, join in both those tables
 func (s *State) GetUserBotsUsername(username string) ([]Bot, error) {
 	rows, err := s.db.Query("SELECT id, name, source FROM bots b LEFT JOIN user_bot_rel ub ON ub.bot_id = b.id WHERE ub.user_id=(SELECT id FROM users WHERE name=?)", username)
 	defer rows.Close()
@@ -222,9 +223,7 @@ func (s *State) GetAllUsers() ([]User, error) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		log.Println("GET /login")
 		// define data
-		log.Println("[d] Defining breadcrumbs")
 		data := map[string]interface{}{}
 		data["version"] = os.Getenv("VERSION")
 		data["pagelink1"] = Link{"login", "/login"}
@@ -236,7 +235,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// session foo
-		log.Println("[d] Getting session")
 		session, _ := globalState.sessions.Get(r, "session")
 		username := session.Values["username"]
 
@@ -245,7 +243,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[d] Getting the user %s\n", username.(string))
 			user, err := UserGetUserFromUsername(username.(string))
 			if user.Name == "" {
-				log.Println("no user found")
 			} else if err != nil {
 				log.Println(err)
 				msg := "Error: could not get the user for given username"
@@ -257,14 +254,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// display errors passed via query parameters
-		log.Println("[d] Getting previous results")
 		queryres := r.URL.Query().Get("res")
 		if queryres != "" {
 			data["res"] = queryres
 		}
 
 		// get the template
-		log.Println("[d] Getting the template")
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
 			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
@@ -275,7 +270,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// exec!
-		log.Println("[d] Executing the template")
 		t.ExecuteTemplate(w, "login", data)
 
 	case "POST":
@@ -336,8 +330,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		data["pagelinkauth"] = []Link{
 			{Name: "login/", Target: "/login"},
 		}
-
-		log.Println(username)
 
 		if username != nil {
 			data["logged_in"] = true
