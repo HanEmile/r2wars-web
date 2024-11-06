@@ -9,17 +9,14 @@
 
   <pre>
 <a href="#settings">Settings</a>
-<a href="#elimination-ladder">Elimination Ladder</a>
-  <a href="#round-1">Round 1</a>
-  <a href="#round-2">Round 2</a>
-  <a href="#round-3">Round 3</a>
-<a href="#current-standings">Current Standings</a>
+<a href="#registered-bots">Registered Bots</a>
+<a href="#output">Output</a>
   </pre>
 
   <span id="settings"></span>
   <h2><a href="#settings">Settings</a></h2>
 
-  <form id="delete" method="POST" action="/battle/{{ .battle.ID }}/delete">
+  <form id="delete" method="DELETE" action="/battle/{{ .battle.ID }}/delete">
   </form>
 
   <table>
@@ -29,6 +26,7 @@
         <td><input class="border" type="text" id="name" name="name" value="{{ .battle.Name }}"></td>
       </tr>
 
+      <!--
       <tr>
         <td><label for="latestBotSubmission">Latest Bot Submission</label></td>
         <td><input
@@ -51,26 +49,27 @@
               ></td>
       </tr>
 
-<!--
       <tr>
         <td><label for="owners">Owners:</label></td>
         <td>
           {{ range $idx, $usr := .battle.Owners }}{{if $idx}},{{end}}<a href="/user/{{ $usr.ID }}">{{ $usr.Name }}</a>{{ end }}
         </td>
       </tr>
+      -->
 
       <tr>
-        <td><label for="bots">Bots:</label></td>
+        <td><label for="bots">Bots submitted:</label></td>
         <td>
           {{ range $idx, $bot := .battle.Bots }}{{if $idx}},{{end}}<a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>{{ end }}
         </td>
       </tr>
-      -->
 
+      <!--
       <tr>
         <td><label for="public">Public?</label></td>
         <td><input type="checkbox" id="public" name="public" {{ if .battle.Public }}checked{{end}}/></td>
       </tr>
+      -->
 
       <tr>
         <td>Archs</td>
@@ -132,36 +131,41 @@
 
     {{ if .myBots }}
 
-    <form method="POST" action="/battle/{{ .battle.ID }}/submit">
-      <tr>
-        <td><label for="name">My Bots</label></td>
-        <td style="width: 100%;">
-          <table class="trhover">
+          <form method="POST" action="/battle/{{ .battle.ID }}/submit">
+    <tr>
+      <td><label for="name">My Bots</label></td>
+      <td style="width: 100%;">
+        <table style="width: 100%;">
+
             {{ range $bot := .myBots  }}
-            <tr>
+            <tr class="trhover">
               <td style="text-align: center; vertical-align: middle; width: 2ex;">
                 <input
                   type="checkbox"
                   id="bot-{{$bot.ID}}"
                   name="bot-{{$bot.ID}}"
-                  value="{{$bot.ID}}" />
-              </td>
-              <td style="vertical-align: middle">
+                  value="{{$bot.ID}}"
+                  {{ range $bbot := $.battle.Bots }}
+                  {{ if eq $bot.ID $bbot.ID }}checked{{ end }}
+                  {{ end }}
+                  />
                 <label for="bot-{{$bot.ID}}">
                   <a href="/bot/{{$bot.ID}}">{{$bot.Name}}</a>
                 </label>
               </td>
+              <td style="vertical-align: middle">
+              </td>
             </tr>
             {{ end }}
-          </table>
-        </td>
-      </tr>
 
-      <tr>
-        <td></td>
-        <td><input class="border" type="submit" value="Submit"></td>
-      </tr>
-    </form>
+          
+        </table>
+      </td>
+    </tr>
+            <tr>
+              <td colspan="5"><input class="border" type="submit" value="Submit bots"></td>
+            </tr>
+          </form>
 
     {{ else }}
 
@@ -171,56 +175,26 @@
     </tr>
 
     {{ end }}
+
   <table>
 
-  <span id="elimination-ladder"></span>
-  <h2><a href="#elimination-ladder">Elimination Ladder</a></h2>
-
-  <span id="round-1"></span>
-  <h3><a href="#round-1">Round 1</a></h2>
-
-  <br><a href="">Round 1.1</a>: <a href="">bot1</a> vs <a href="">bot2</a>
-  <br><a href="">Round 1.2</a>: <a href="">bot3</a> vs <a href="">bot4</a>
   <br>
-  <br><a href="">Round 1.3</a>: <a href="">bot1</a> vs <a href="">bot2</a>
-  <br><a href="">Round 1.4</a>: <a href="">bot3</a> vs <a href="">bot4</a>
 
-  <span id="round-2"></span>
-  <h3><a href="#round-2">Round 2</a></h2>
+  <form method="POST" action="/battle/{{ .battle.ID }}/run">
+    <input class="border" type="submit" value="Run the Battle">
+  </form>
 
-  <br><a href="">Round 2.1</a>: winner of <a href="">round 1.1</a> vs winner of <a href="">round 1.2</a>
-  <br><a href="">Round 2.2</a>: winner of <a href="">round 1.3</a> vs winner of <a href="">round 1.4</a>
+  <span id="registered bots"></span>
+  <h2><a href="#registered-bots">Registered Bots</a></h2>
 
-  <span id="round-3"></span>
-  <h3><a href="#round-3">Round 3</a></h2>
+  {{ range $idx, $bot := .battle.Bots}}{{if $idx}}, {{end}}<a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>{{ end -}}
 
-  <br><a href="">Round 3.1</a>: winner of <a href="">round 2.1</a> vs winner of <a href="">round 2.2</a>
+  <span id="output"></span>
+  <h2><a href="#output">Output</a></h2>
+
+  <pre>{{ .battle.RawOutput }}</pre>
 
   <span id="current-standings"></span>
-  <h2><a href="#current-standings">Current Standings</a></h2>
-
-  <p>There are {{ .botAmount }} Bots in this battle, as we're executing each battle two times with all permutations, we're executing {{ .battleCount }} battles.</p>
-
-  <br>What is Lorem Ipsum?
-  <br>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-
-  <br>Why do we use it?
-  <br>It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).
-
-
-  <br>Where does it come from?
-  <br>Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, "Lorem ipsum dolor sit amet..", comes from a line in section 1.10.32.
-
-  <br>The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from "de Finibus Bonorum et Malorum" by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham.
-
-  <br>Where can I get some?
-  <br>There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text. All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour, or non-characteristic words etc.
-  <br>Where can I get some?
-  <br>There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text. All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour, or non-characteristic words etc.
-  <br>Where can I get some?
-  <br>There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text. All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour, or non-characteristic words etc.
-  <br>Where can I get some?
-  <br>There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text. All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour, or non-characteristic words etc.
 </body>
 {{ template "footer" . }}
 {{ end }}

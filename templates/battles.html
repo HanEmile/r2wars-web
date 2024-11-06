@@ -10,9 +10,9 @@
   <p>A battle is a collection of matches. It plays through all matches in the elimination ladder in order to determine an overall winner.</p>
   <br>
 
-  <table class="trhover">
+  <table>
   {{ range $battle := .battles }}
-    <tr>
+    <tr class="trhover">
       <td>
         - <a href="/battle/{{ $battle.ID }}">{{ $battle.Name }}</a>
       </td>

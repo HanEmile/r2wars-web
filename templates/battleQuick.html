@@ -1,0 +1,57 @@
+{{ define "battleQuick" }}
+
+{{ template "head" . }}
+<body>
+  {{ template "nav" . }}
+
+  <span id="quickbattle"></span>
+  <h1><a href="#quickbattle">Quick battle</a></h1>
+  
+  <p>Just quickly want to try out two bots? Select them here and we'll let them fight quickly!</p>
+
+  <br>
+
+  <form id="battle" method="POST" action="/battle/quick">
+    <table class="trhover">
+    {{ range $bot := .bots }}
+      <tr>
+
+        <!-- The name of the bot with the link to the bot's page -->
+        <td>
+          <a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>
+        </td>
+
+        <!-- A checkbox allowing the user to select the bot -->
+              <!-- class="check-with-label" -->
+        <td>
+            <input
+              type="checkbox"
+              name="bot-{{$bot.ID}}"
+              id="bot-{{$bot.ID}}"
+              />
+            <label class="label-for-check" for="bot-{{$bot.ID}}"></label>
+        <td>
+
+        <!-- The list of users the bot belongs to-->
+        <td>
+          {{ range $idx, $usr := $bot.Users }}{{if $idx}},{{end}}<a href="/user/{{ $usr.ID }}">{{ $usr.Name }}</a>{{ end }}
+        </td>
+
+      </tr>
+    {{ end }}
+      <tr>
+        <td></td>
+        <td>{{ .res }}</td>
+      </tr>
+    </table>
+
+    <br>
+    <div class=".w-100"><input class="border" type="submit" value="Fight!"></div>
+    
+  </form>
+
+  <!-- {{ . }} -->
+
+</body>
+{{ template "footer" . }}
+{{ end }}

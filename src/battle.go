@@ -11,16 +11,18 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/radareorg/r2pipe-go"
 )
 
 type Battle struct {
-	ID     int
-	Name   string
-	Bots   []Bot
-	Owners []User
-	Public bool
-	Archs  []Arch
-	Bits   []Bit
+	ID        int
+	Name      string
+	Bots      []Bot
+	Owners    []User
+	Public    bool
+	Archs     []Arch
+	Bits      []Bit
+	RawOutput string
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -36,6 +38,10 @@ func BattleCreate(name string, public bool) (int, error) {
 
 func BattleLinkBot(botid int, battleid int) error {
 	return globalState.LinkBotBattle(botid, battleid)
+}
+
+func BattleUnlinkAllBotsForUser(userid int, battleid int) error {
+	return globalState.UnlinkAllBotsForUserFromBattle(userid, battleid)
 }
 
 func BattleGetByIdDeep(id int) (Battle, error) {
@@ -54,17 +60,23 @@ func BattleLinkBitIDs(battleid int, bitIDs []int) error {
 	return globalState.LinkBitIDsToBattle(battleid, bitIDs)
 }
 
+func BattleSaveRawOutput(battleid int, rawOutput string) error {
+	return globalState.UpdateBattleRawOutput(battleid, rawOutput)
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // DATABASE
 
 func (s *State) InsertBattle(battle Battle) (int, error) {
 	res, err := s.db.Exec("INSERT INTO battles VALUES(NULL,?,?,?);", time.Now(), battle.Name, battle.Public)
 	if err != nil {
+		log.Println(err)
 		return -1, err
 	}
 
 	var id int64
 	if id, err = res.LastInsertId(); err != nil {
+		log.Println(err)
 		return -1, err
 	}
 	return int(id), nil
@@ -73,6 +85,7 @@ func (s *State) InsertBattle(battle Battle) (int, error) {
 func (s *State) UpdateBattle(battle Battle) error {
 	_, err := s.db.Exec("UPDATE battles SET name=?, public=? WHERE id=?", battle.Name, battle.Public, battle.ID)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	return nil
@@ -81,17 +94,49 @@ func (s *State) UpdateBattle(battle Battle) error {
 func (s *State) LinkBotBattle(botid int, battleid int) error {
 	_, err := s.db.Exec("INSERT INTO bot_battle_rel VALUES (?, ?)", botid, battleid)
 	if err != nil {
-		log.Println("Error linking bot to battle: ", err)
+		log.Println(err)
 		return err
 	} else {
 		return nil
 	}
 }
 
+func (s *State) UnlinkAllBotsForUserFromBattle(userid int, battleid int) error {
+	// get a user with the given id
+	// for all of their bots
+	// delete the bots from the bot_battle relation
+
+	// there are some joins to get through the following links:
+	// bot_battle_rel.bot_id
+	//   -> bot.id
+	//   -> user_bot_rel.bot_id
+	//   -> user_bot_rel.user_id
+	//   -> user.id
+
+	// delete preexisting links
+	_, err := s.db.Exec(`
+	DELETE FROM bot_battle_rel
+	WHERE bot_id IN
+		(SELECT b.id
+		 FROM bot_battle_rel bb_rel
+		 JOIN bots b ON b.id = bb_rel.bot_id
+		 JOIN user_bot_rel ub_rel ON ub_rel.bot_id = b.id
+		 JOIN users u ON u.id = ub_rel.user_id
+		 WHERE u.id=?)`, userid)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
 func (s *State) LinkArchIDsToBattle(battleid int, archIDs []int) error {
 	// delete preexisting links
 	_, err := s.db.Exec("DELETE FROM arch_battle_rel WHERE battle_id=?;", battleid)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
@@ -109,7 +154,7 @@ func (s *State) LinkArchIDsToBattle(battleid int, archIDs []int) error {
 
 	_, err = s.db.Exec(query)
 	if err != nil {
-		log.Println("LinkArchIDsToBattle err: ", err)
+		log.Println(err)
 		return err
 	} else {
 		return nil
@@ -120,6 +165,7 @@ func (s *State) LinkBitIDsToBattle(battleid int, bitIDs []int) error {
 	// delete preexisting links
 	_, err := s.db.Exec("DELETE FROM bit_battle_rel WHERE battle_id=?;", battleid)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
@@ -137,7 +183,7 @@ func (s *State) LinkBitIDsToBattle(battleid int, bitIDs []int) error {
 
 	_, err = s.db.Exec(query)
 	if err != nil {
-		log.Println("LinkBitIDsToBattle err: ", err)
+		log.Println(err)
 		return err
 	} else {
 		return nil
@@ -148,6 +194,7 @@ func (s *State) GetAllBattles() ([]Battle, error) {
 	rows, err := s.db.Query("SELECT id, name FROM battles;")
 	defer rows.Close()
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
@@ -171,6 +218,7 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 	var battleid int
 	var battlename string
 	var battlepublic bool
+	var battlerawoutput string
 
 	var botids string
 	var botnames string
@@ -188,9 +236,13 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	// This fetches the battles and relates the associated bots, users, archs and bits
 
+	// TODO(emile): go deeper! we could fetch battle -> bot -> arch (so fetching the linked arch
+	//              for the given bot)
+
 	err := s.db.QueryRow(`
 	SELECT DISTINCT
-		ba.id, ba.name, ba.public,
+		ba.id, ba.name, ba.public, 
+		COALESCE(ba.raw_output, ""),
 		COALESCE(group_concat(DISTINCT bb.bot_id), ""),
 		COALESCE(group_concat(DISTINCT bo.name), ""),
 		COALESCE(group_concat(DISTINCT ub.user_id), ""),
@@ -215,23 +267,11 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	WHERE ba.id=?
 	GROUP BY ba.id;
-	`, id).Scan(&battleid, &battlename, &battlepublic, &botids, &botnames, &userids, &usernames, &archids, &archnames, &bitids, &bitnames)
+	`, id).Scan(&battleid, &battlename, &battlepublic, &battlerawoutput, &botids, &botnames, &userids, &usernames, &archids, &archnames, &bitids, &bitnames)
 	if err != nil {
-		log.Println("Err making GetBattleByID query: ", err)
+		log.Println(err)
 		return Battle{}, err
 	}
-
-	log.Println("battleid: ", battleid)
-	log.Println("battlename: ", battlename)
-	log.Println("battlepublic: ", battlepublic)
-	log.Println("botids: ", botids)
-	log.Println("botnames: ", botnames)
-	log.Println("userids: ", userids)
-	log.Println("usernames: ", usernames)
-	log.Println("archids: ", archids)
-	log.Println("archnames: ", archnames)
-	log.Println("bitids: ", bitids)
-	log.Println("bitnames: ", bitnames)
 
 	// The below is a wonderful examle of how golang could profit from macros
 	// I should just have done this all in common lisp tbh.
@@ -246,10 +286,10 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	var bots []Bot
 	if botIDList[0] != "" {
-		for i, _ := range botIDList {
+		for i := range botIDList {
 			id, err := strconv.Atoi(botIDList[i])
 			if err != nil {
-				log.Println("Err handling bots: ", err)
+				log.Println(err)
 				return Battle{}, err
 			}
 			bots = append(bots, Bot{id, botNameList[i], "", []User{}, []Arch{}, []Bit{}})
@@ -264,10 +304,10 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	var users []User
 	if userIDList[0] != "" {
-		for i, _ := range userIDList {
+		for i := range userIDList {
 			id, err := strconv.Atoi(userIDList[i])
 			if err != nil {
-				log.Println("Err handling users: ", err)
+				log.Println(err)
 				return Battle{}, err
 			}
 			users = append(users, User{id, userNameList[i], []byte{}})
@@ -282,10 +322,10 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	var archs []Arch
 	if archIDList[0] != "" {
-		for i, _ := range archIDList {
+		for i := range archIDList {
 			id, err := strconv.Atoi(archIDList[i])
 			if err != nil {
-				log.Println("Err handling archs: ", err)
+				log.Println(err)
 				return Battle{}, err
 			}
 			archs = append(archs, Arch{id, archNameList[i], true})
@@ -300,10 +340,10 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	var bits []Bit
 	if bitIDList[0] != "" {
-		for i, _ := range bitIDList {
+		for i := range bitIDList {
 			id, err := strconv.Atoi(bitIDList[i])
 			if err != nil {
-				log.Println("Err handling bits: ", err)
+				log.Println(err)
 				return Battle{}, err
 			}
 			bits = append(bits, Bit{id, bitNameList[i], true})
@@ -312,22 +352,25 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 		bits = []Bit{}
 	}
 
-	// return it all!
-	switch {
-	case err != nil:
-		log.Println("Overall err in the GetBattleByID func: ", err)
-		return Battle{}, err
-	default:
-		return Battle{
-			ID:     battleid,
-			Name:   battlename,
-			Bots:   bots,
-			Owners: users,
-			Public: battlepublic,
-			Archs:  archs,
-			Bits:   bits,
-		}, nil
+	return Battle{
+		ID:        battleid,
+		Name:      battlename,
+		Bots:      bots,
+		Owners:    users,
+		Public:    battlepublic,
+		Archs:     archs,
+		Bits:      bits,
+		RawOutput: battlerawoutput,
+	}, nil
+}
+
+func (s *State) UpdateBattleRawOutput(battleid int, rawOutput string) error {
+	_, err := s.db.Exec("UPDATE battles SET raw_output=? WHERE id=?", rawOutput, battleid)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
+	return nil
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -346,6 +389,7 @@ func battlesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		data["pagelinknext"] = []Link{
 			{Name: "new", Target: "/new"},
+			{Name: "quick", Target: "/quick"},
 		}
 
 		// sessions
@@ -359,6 +403,7 @@ func battlesHandler(w http.ResponseWriter, r *http.Request) {
 			// get the user
 			user, err := UserGetUserFromUsername(username.(string))
 			if err != nil {
+				log.Println(err)
 				http.Redirect(w, r, "/login", http.StatusSeeOther)
 				return
 			}
@@ -373,7 +418,7 @@ func battlesHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
-			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -405,6 +450,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		data["pagelink2"] = Link{Name: "new", Target: "/new"}
 		data["pagelink2options"] = []Link{
 			{Name: "list", Target: ""},
+			{Name: "quick", Target: "/quick"},
 		}
 
 		// display errors passed via query parameters
@@ -416,6 +462,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		// get data needed
 		user, err := UserGetUserFromUsername(username)
 		if err != nil {
+			log.Println(err)
 			data["err"] = "Could not fetch the user"
 		} else {
 			data["user"] = user
@@ -423,6 +470,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 
 		archs, err := ArchGetAll()
 		if err != nil {
+			log.Println(err)
 			data["err"] = "Could not fetch the archs"
 		} else {
 			data["archs"] = archs
@@ -430,6 +478,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 
 		bits, err := BitGetAll()
 		if err != nil {
+			log.Println(err)
 			data["err"] = "Could not fetch the bits"
 		} else {
 			data["bits"] = bits
@@ -438,7 +487,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
-			log.Printf("Error reading the template Path: %s/*.html", templatesPath)
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Error reading template file"))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -467,6 +516,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(k, "arch-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "arch-"))
 				if err != nil {
+					log.Println(err)
 					msg := "ERROR: Invalid arch id"
 					http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
 					return
@@ -476,6 +526,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(k, "bit-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "bit-"))
 				if err != nil {
+					log.Println(err)
 					msg := "ERROR: Invalid bit id"
 					http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
 					return
@@ -489,7 +540,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Creating battle")
 			battleid, err := BattleCreate(name, public)
 			if err != nil {
-				log.Println("Error creating the battle using BattleCreate(): ", err)
+				log.Println(err)
 				msg := "ERROR: Could not create due to internal reasons"
 				http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
 				return
@@ -498,7 +549,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 			// link archs to battle
 			err = BattleLinkArchIDs(battleid, archIDs)
 			if err != nil {
-				log.Println("Error linking the arch ids to the battle: ", err)
+				log.Println(err)
 				msg := "ERROR: Could not create due to internal reasons"
 				http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
 				return
@@ -507,7 +558,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 			// link bits to battle
 			err = BattleLinkBitIDs(battleid, bitIDs)
 			if err != nil {
-				log.Println("Error linking the bit ids to the battle: ", err)
+				log.Println(err)
 				msg := "ERROR: Could not create due to internal reasons"
 				http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
 				return
@@ -525,14 +576,126 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO(emile): add user creating battle as default owner
-// TODO(emile): allow adding other users as owners to battles
-// TODO(emile): implement submitting bots
-// TODO(emile): implement running the battle
-// TODO(emile): add a "start battle now" button
-// TODO(emile): add a "battle starts at this time" field into the battle
-// TODO(emile): figure out how time is stored and restored with the db
-// TODO(emile): do some magic to display the current fight backlog with all info
+func battleQuickHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		// define data
+		data := map[string]interface{}{}
+		data["version"] = os.Getenv("VERSION")
+
+		// breadcrumb foo
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"].(string)
+		data["pagelink1"] = Link{Name: "battle", Target: "/battle"}
+		data["pagelink1options"] = []Link{
+			{Name: "user", Target: "/user"},
+			{Name: "bot", Target: "/bot"},
+		}
+		data["pagelink2"] = Link{Name: "quick", Target: "/quick"}
+		data["pagelink2options"] = []Link{
+			{Name: "new", Target: "/new"},
+			{Name: "list", Target: ""},
+		}
+
+		// display errors passed via query parameters
+		queryres := r.URL.Query().Get("err")
+		if queryres != "" {
+			data["res"] = queryres
+		}
+
+		// get data needed
+		user, err := UserGetUserFromUsername(username)
+		if err != nil {
+			log.Println(err)
+			data["err"] = "Could not fetch the user"
+		} else {
+			data["user"] = user
+		}
+
+		// essentiall... ...the list of all bots from which the user can select two that shall
+		// battle!
+		bots, err := globalState.GetAllBotsWithUsers()
+		data["bots"] = bots
+
+		// get the template
+		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Error reading template file"))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// exec!
+		t.ExecuteTemplate(w, "battleQuick", data)
+
+	case "POST":
+		// parse the post parameters
+		r.ParseForm()
+
+		var public bool
+		query_public := r.Form.Get("public")
+		if query_public == "on" {
+			public = true
+		}
+
+		// gather the information from the arch and bit selection
+		var botIDs []int
+
+		for k, _ := range r.Form {
+			if strings.HasPrefix(k, "bot-") {
+				id, err := strconv.Atoi(strings.TrimPrefix(k, "bot-"))
+				if err != nil {
+					log.Println(err)
+					msg := "ERROR: Invalid bot id"
+					http.Redirect(w, r, fmt.Sprintf("/battle/quick?res=%s", msg), http.StatusSeeOther)
+					return
+				}
+				botIDs = append(botIDs, id)
+			}
+		}
+
+		// create the battle itself
+		log.Println("Creating battle")
+		battleid, err := BattleCreate("quick", public)
+		if err != nil {
+			log.Println(err)
+			msg := "ERROR: Could not create due to internal reasons"
+			http.Redirect(w, r, fmt.Sprintf("/battle/quick?res=%s", msg), http.StatusSeeOther)
+			return
+		}
+
+		// allow all archs and all bits
+
+		// link bots to battle
+
+		http.Redirect(w, r, fmt.Sprintf("/battle/%d", battleid), http.StatusSeeOther)
+
+		//  // link archs to battle
+		//  err = BattleLinkArchIDs(battleid, archIDs)
+		//  if err != nil {
+		//  	log.Println(err)
+		//  	msg := "ERROR: Could not create due to internal reasons"
+		//  	http.Redirect(w, r, fmt.Sprintf("/battle/quick?res=%s", msg), http.StatusSeeOther)
+		//  	return
+		//  }
+
+		//  // link bits to battle
+		//  err = BattleLinkBitIDs(battleid, bitIDs)
+		//  if err != nil {
+		//  	log.Println(err)
+		//  	msg := "ERROR: Could not create due to internal reasons"
+		//  	http.Redirect(w, r, fmt.Sprintf("/battle/quick?res=%s", msg), http.StatusSeeOther)
+		//  	return
+		//  }
+
+		//  http.Redirect(w, r, "/battle", http.StatusSeeOther)
+		return
+	default:
+		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
+	}
+}
 
 func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -543,6 +706,9 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// A partially filled format string (the reason for the redirect is still to be filled later)
+	redir_target := fmt.Sprintf("/battle/%d?res=%%s", battleid)
 
 	switch r.Method {
 	case "GET":
@@ -562,16 +728,26 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		session, _ := globalState.sessions.Get(r, "session")
-		username := session.Values["username"].(string)
+		username := session.Values["username"]
 
-		viewer, err := UserGetUserFromUsername(username)
+		if username == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		viewer, err := UserGetUserFromUsername(username.(string))
 		if err != nil {
-			data["err"] = "Could not get the id four your username... Please contact an admin"
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the id for your username")
+			return
 		}
 		data["user"] = viewer
 
 		// get the battle including it's users, bots, archs, bits
 		battle, err := BattleGetByIdDeep(int(battleid))
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the battle given the id provided")
+			return
+		}
 		data["battle"] = battle
 		data["botAmount"] = len(battle.Bots)
 		data["battleCount"] = (len(battle.Bots) * len(battle.Bots)) * 2
@@ -587,10 +763,9 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		data["pagelink2options"] = opts
 
 		// get the bots of the user viewing the page, as they might want to submit them
-		myBots, err := UserGetBotsUsingUsername(username)
+		myBots, err := UserGetBotsUsingUsername(username.(string))
 		if err != nil {
-			log.Println("err: ", err)
-			http.Redirect(w, r, fmt.Sprintf("/battle/%d", battleid), http.StatusSeeOther)
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get your bots")
 			return
 		}
 		data["myBots"] = myBots
@@ -598,7 +773,8 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		// get all architectures and set the enable flag on the ones that are enabled in the battle
 		archs, err := ArchGetAll()
 		if err != nil {
-			data["err"] = "Could not fetch the archs"
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get your bots")
+			return
 		} else {
 			data["archs"] = archs
 		}
@@ -614,7 +790,8 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		// get all bits and set the enable flag on the ones that are enabled in the battle
 		bits, err := BitGetAll()
 		if err != nil {
-			data["err"] = "Could not fetch the bits"
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not fetch the bits")
+			return
 		} else {
 			data["bits"] = bits
 		}
@@ -649,7 +826,10 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// exec!
-		t.ExecuteTemplate(w, "battleSingle", data)
+		err = t.ExecuteTemplate(w, "battleSingle", data)
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "err rendering template")
+		}
 
 	case "POST":
 		log.Println("POST!")
@@ -710,8 +890,7 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(k, "arch-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "arch-"))
 				if err != nil {
-					msg := "ERROR: Invalid arch id"
-					http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s#settings", battleid, msg), http.StatusSeeOther)
+					log_and_redir_with_msg(w, r, err, redir_target, "Invalid Arch ID")
 					return
 				}
 				archIDs = append(archIDs, id)
@@ -719,8 +898,7 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(k, "bit-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "bit-"))
 				if err != nil {
-					msg := "ERROR: Invalid bit id"
-					http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s#settings", battleid, msg), http.StatusSeeOther)
+					log_and_redir_with_msg(w, r, err, redir_target, "Invalid Bit ID")
 					return
 				}
 				bitIDs = append(bitIDs, id)
@@ -730,30 +908,23 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		// link archs to battle
 		err = BattleLinkArchIDs(battleid, archIDs)
 		if err != nil {
-			log.Println("Error linking the arch ids to the battle: ", err)
-			msg := "ERROR: Could not create due to internal reasons"
-			http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s#settings", battleid, msg), http.StatusSeeOther)
+			log_and_redir_with_msg(w, r, err, redir_target+"#settings", "Could not link arch id to battle")
 			return
 		}
 
 		// link bits to battle
 		err = BattleLinkBitIDs(battleid, bitIDs)
 		if err != nil {
-			log.Println("Error linking the bit ids to the battle: ", err)
-			msg := "ERROR: Could not create due to internal reasons"
-			http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s#settings", battleid, msg), http.StatusSeeOther)
+			log_and_redir_with_msg(w, r, err, redir_target+"#settings", "Could not link bit id to battle")
 			return
 		}
 
-		new_battle := Battle{int(battleid), form_name, []Bot{}, []User{}, public, []Arch{}, []Bit{}}
+		new_battle := Battle{int(battleid), form_name, []Bot{}, []User{}, public, []Arch{}, []Bit{}, ""}
 
 		log.Println("Updating battle...")
 		err = BattleUpdate(new_battle)
 		if err != nil {
-			log.Println("err: ", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - Error inserting battle into db"))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log_and_redir_with_msg(w, r, err, redir_target+"#settings", "Could not insert battle into db")
 			return
 		}
 
@@ -774,12 +945,28 @@ func battleSubmitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	redir_target := fmt.Sprintf("/battle/%d?res=%%s", battleid)
+
 	switch r.Method {
 	case "POST":
 		r.ParseForm()
 
-		log.Println("Adding bot to battle", battleid)
+		log.Println("Someone submitted the following form:")
 		log.Println(r.Form)
+
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"]
+
+		if username == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		user, err := UserGetUserFromUsername(username.(string))
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the id for your username")
+			return
+		}
 
 		// get all the form values that contain the bot that shall be submitted
 		var botIDs []int
@@ -795,15 +982,15 @@ func battleSubmitHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		log.Println(botIDs)
-
 		battle, err := BattleGetByIdDeep(battleid)
 		if err != nil {
 			msg := "ERROR: Couln't get the battle with the given id"
 			http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s", battleid, msg), http.StatusSeeOther)
 			return
 		}
-		log.Println(battle)
+
+		// clear all bots from that user for that battle before readding them here
+		BattleUnlinkAllBotsForUser(user.ID, battleid)
 
 		// for all bots, get their bits and arch and compare them to the one of the battle
 		for _, id := range botIDs {
@@ -852,6 +1039,191 @@ func battleSubmitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := "Success!"
 		http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s", battleid, msg), http.StatusSeeOther)
+	default:
+		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
+	}
+}
+
+// actually run the battle
+func battleRunHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	battleid, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Invalid battle id"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	redir_target := fmt.Sprintf("/battle/%d?res=%%s", battleid)
+
+	switch r.Method {
+	case "POST":
+		r.ParseForm()
+
+		log.Printf("running the battle with the id %d", battleid)
+		log.Println("Someone submitted the following form:")
+		log.Println(r.Form)
+
+		// fetch the session and get the user
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"]
+		if username == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		user, err := UserGetUserFromUsername(username.(string))
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the id for your username")
+			return
+		}
+
+		// open radare without input for building the bot
+		// TODO(emile): configure a variable memsize for the arena
+		r2p1, err := r2pipe.NewPipe("malloc://4096")
+		if err != nil {
+			panic(err)
+		}
+		defer r2p1.Close()
+
+		// Fetch the battle information
+		// This includes all bots linked to the battle
+		log.Printf("user %+v wants to run the battle", user)
+		fullDeepBattle, err := BattleGetByIdDeep(battleid)
+
+		var botSources []string
+		var rawOutput string
+
+		// for each bot involved within the battle, we need to fetch it again, as the deep battle
+		// fech doesn't fetch that deep (it fetches the batle and the corresponding bots, but only
+		// their ids and names and not the archs and bits associated)
+		for _, b := range fullDeepBattle.Bots {
+			bot, err := BotGetById(b.ID)
+			if err != nil {
+				log.Println(err)
+			}
+
+			// define the command used to assemble the bot
+			src := strings.ReplaceAll(bot.Source, "\r\n", "; ")
+			radareCommand := fmt.Sprintf("rasm2 -a %s -b %s \"%+v\"", bot.Archs[0].Name, bot.Bits[0].Name, src)
+			rawOutput += fmt.Sprintf("; %s\n", radareCommand)
+
+			// assemble the bot
+			bytecode, err := r2cmd(r2p1, radareCommand)
+			if err != nil {
+				http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s", battleid, "err building bot"), http.StatusSeeOther)
+				return
+			}
+
+			botSources = append(botSources, bytecode)
+		}
+
+		// TODO(emile): [L] implement some kind of queue
+
+		// TODO(emile): [S] use the information given from the battle, such as the right arch and bits
+		cmd := "e asm.arch=arm"
+		output, _ := r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
+
+		cmd = "e asm.bits=32"
+		output, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
+
+		cmd = "aei"
+		output, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
+
+		cmd = "aeim"
+		output, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
+
+		// TODO(emile): random offsets
+		for i, s := range botSources {
+			log.Printf("writing bot %d to 0x%d", i, 50*(i+1))
+			cmd := fmt.Sprintf("wx %s @ 0x%d", s, 50*(i+1))
+			_, _ = r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+		}
+
+		// print the memory for some pleasing visuals
+		cmd = fmt.Sprintf("pxc 100 @ 0x50")
+		output, _ = r2cmd(r2p1, cmd) // print
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+		fmt.Println(output)
+
+		// init stack
+		cmd = "aer PC = 0x50"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+		cmd = "aer SP = SP + 0x50"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+		output, _ = r2cmd(r2p1, "pxc 100 @ 0x50") // print
+		fmt.Println(output)
+
+		// define end conditions
+		cmd = "e cmd.esil.todo=t theend=1"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+		cmd = "e cmd.esil.trap=t theend=1"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+		cmd = "e cmd.esil.intr=t theend=1"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+		cmd = "e cmd.esil.ioer=t theend=1"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+		// set the end condition to 0 initially
+		cmd = "f theend=0"
+		_, _ = r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+		// TODO(emile): find a sensible default for the max amount of rounds
+		for i := 0; i < 1000; i++ {
+
+			// this is architecture agnostic and just outputs the program counter
+			rawOutput += fmt.Sprintf("[0x00000000]> ########################################################################\n")
+			pc, _ := r2cmd(r2p1, "aer~$(arn PC)~[1]")
+			arch, _ := r2cmd(r2p1, "e asm.arch")
+			bits, _ := r2cmd(r2p1, "e asm.bits")
+			rawOutput += fmt.Sprintf("[0x00000000]> # ROUND %d, PC=%s, arch=%s, bits=%s\n", i, pc, arch, bits)
+
+			//  _, _ = r2cmd(r2p1, "aes") // step
+			cmd = "aes"
+			_, _ = r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+			// print the arena
+			cmd := "pxc 100 @ 0x50"
+			output, _ := r2cmd(r2p1, cmd) // print
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s\n", cmd, output)
+			fmt.Println(output)
+
+			// TODO(emile): restore state
+
+			// TODO(emile): check the end condition
+			_, _ = r2cmd(r2p1, "?v 1+theend") // check end condition
+		}
+
+		BattleSaveRawOutput(battleid, rawOutput)
+
+		msg := "Success!"
+		http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s#output", battleid, msg), http.StatusSeeOther)
+	default:
+		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
+	}
+}
+
+// delete a battle
+func battleDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "DELETE":
+
+		http.Redirect(w, r, fmt.Sprintf("/battle?res=%s", battleid, msg), http.StatusSeeOther)
 	default:
 		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
 	}
