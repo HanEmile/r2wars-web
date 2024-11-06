@@ -7,10 +7,7 @@ import (
 )
 
 func r2cmd(r2p *r2pipe.Pipe, input string) (string, error) {
-
-	log.Println("---")
 	log.Printf("> %s\n", input)
-	log.Println("---")
 
 	// send a command
 	buf1, err := r2p.Cmd(input)
