@@ -75,10 +75,14 @@
       <tr><td><hr></td><td><hr></td></tr>
 
       <tr>
-        <td>CMD</td>
-        <td>{{ .bytecode_r2cmd }}</td>
+        <td></td>
+        <td>Command converting your source into bytes:</td>
       </tr>
-      <tr>
+      <tr class="trhover">
+        <td style="width: 100ex; ">CMD</td>
+        <td style="width: 100ex; ">{{ .bytecode_r2cmd }}</td>
+      </tr>
+      <tr class="trhover">
         <td>Bytecode</td>
         <td>{{ .bytecode }}</td>
       </tr>
@@ -86,10 +90,14 @@
       <tr><td><hr></td><td><hr></td></tr>
 
       <tr>
+        <td></td>
+        <td>The disassembly of your source:</td>
+      </tr>
+      <tr class="trhover">
         <td>CMD</td>
         <td>{{ .disasm_r2cmd }}</td>
       </tr>
-      <tr>
+      <tr class="trhover">
         <td>Disasm</td>
         <td><pre>{{ .disasm }}</pre></td>
       </tr>

@@ -430,6 +430,7 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 			data["res"] = queryres
 		}
 
+		// fetch the session and get the user that made the request
 		session, _ := globalState.sessions.Get(r, "session")
 		username := session.Values["username"].(string)
 
@@ -438,6 +439,7 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 			data["err"] = "Could not get the id four your username... Please contact an admin"
 		}
 
+		// get the bot that was requested
 		bot, err := BotGetById(int(botid))
 		data["bot"] = bot
 		data["user"] = viewer
@@ -449,6 +451,9 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r2p1.Close()
 
+		// TODO(emile): improve the archs and bit handling here. I'll use the first one for now,
+		// but it would be nice to loop over all of them (would be a matrix with archs and bits
+		// on the axes)
 		src := strings.ReplaceAll(bot.Source, "\r\n", "; ")
 		radareCommand := fmt.Sprintf("rasm2 -a %s -b %s \"%+v\"", bot.Archs[0].Name, bot.Bits[0].Name, src)
 		bytecode, err := r2cmd(r2p1, radareCommand)
