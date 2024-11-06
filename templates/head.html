@@ -8,7 +8,7 @@
   <title>r2wa.rs</title>
 
   <style>
-* { word-wrap:break-word !important; font-family: monospace; margin: 0; padding: 0; }
+* { word-wrap:break-word; font-family: monospace; margin: 0; padding: 0; }
 
 /* light/darktheme specific foo */
 @media (prefers-color-scheme: light) {
@@ -26,7 +26,7 @@
   h5 { margin: 1ex 0 1ex 0; width: 100%; font-size: 1em; /*background-color: #fafafa*/}
   .code { border-left: 1px solid #040404; margin-left: 2ex; padding-left: 1ex; }
   .codeline:hover { background: #eeeeee; color: #040404; }
-  .trhover tr:hover { border-bottom: 1px solid #dddddd; }
+  .trhover:hover { background: #c0c0c0; color: #040404; }
 
   /* add an outline while hovering, the !important makes hovering on checked elements still visible */
   .check-with-label:checked + .label-for-check { background-color: #040404; color: #eeeeee !important; }
@@ -50,14 +50,14 @@
   .code { border-left: 1px solid #c0c0c0; margin-left: 2ex;  padding-left: 1ex; }
   .codeline:hover { background: #c0c0c0; color: #040404; }
   .webring { -webkit-filter: invert(100%); filter: invert(100%); }
-  .trhover tr:hover { background: #c0c0c0; color: #040404; }
+  .trhover:hover { background: #c0c0c0; color: #040404; }
 
   /* add an outline while hovering, the !important makes hovering on checked elements still visible */
   .check-with-label:checked + .label-for-check { background-color: #c0c0c0; color: #040404 !important; }
   .check-with-label:hover + .label-for-check { outline: 1px solid #c0c0c0; color: #c0c0c0; }
 
   input, textarea { background-color: #c0c0c0; }
-  .border { outline: 1px solid #c0c0c0; border: none; }
+  .border { outline: 1px solid #000000; border: none; }
 }
 
 /* settings for mobile devices*/
@@ -65,6 +65,12 @@
   body { margin: 1ex; width: calc(100% - 2ex) !important; }
   img { max-width: 100% !important; max-height: 500px; }
 }
+
+/* only display the hover dropdown on non-mobile devices */
+@media only screen and (min-width: 768px) {
+  nav ul li:hover a + ul { display: inherit; white-space: nowrap; }
+}
+
 img { max-width: 100ex; max-height: 500px; }
 
 body { margin-left: auto; margin-right: auto; margin-top: 1ex; margin-bottom: 1ex; width: 100ex; }
@@ -78,7 +84,7 @@ body a:not(h1 a, h2 a, h3 a,h4 a):not([href*="webring.xxiivv.com"]):not([class*=
 a[href*="//"]:not([href*="r2wa.rs"]):not([class*="icon"]):before { content: '{'; }
 a[href*="//"]:not([href*="r2wa.rs"]):not([class*="icon"]):after { content: '}'; }
 
-table { width: 100%; }
+/* table { width: 100ex; } */
 input, textarea { width: 100%; }
 textarea { padding: 0.5ex; }
 
@@ -91,11 +97,6 @@ nav ul li { display:inline-block; }
 nav ul ul { display: none; position: absolute; outline: 1px solid #040404; background-color: #ff0; }
 nav ul ul li { width: 100%; padding-right: 1ex; float:none; display:list-item; position: relative; }
 nav + ul li { display: inline-block;}
-
-/* only display the hover dropdown on non-mobile devices */
-@media only screen and (min-width: 768px) {
-  nav ul li:hover a + ul { display: inherit; white-space: nowrap; }
-}
 
 /* nav bar spacing char */
 nav ul li > a::after { content: " /"; }
@@ -113,10 +114,13 @@ nav + ul.vert li { display: block; }
 
 .w-100 { width: 100%; }
 
-.check-with-label { display: none; }
+.check-with-label { display: none; } /* checkbox with a label */
 
-body table tbody tr td { padding-bottom: 0.5ex; vertical-align: top; }
-body table tbody tr td:not(:last-child) { padding-right: 1ex; }
+/* In tables, make the first column fit the content and the reset be relaxed */
+body table tbody { width: 100%; word-wrap: break-word; }
+/* body table tbody tr>td { padding: 0.5ex 0 0.5ex !important; } */
+body table tbody tr td:nth-child(1) { width: auto; white-space: nowrap; padding-right: 1ex; }
+body table tbody tr td:not(:nth-child(1)) { width: 100%; max-width: 100%; word-wrap: anywhere; }
 
 tr { text-wrap: wrap;}
 

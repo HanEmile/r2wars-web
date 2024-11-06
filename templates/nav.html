@@ -16,7 +16,9 @@
         <ul>
           {{ if .pagelink1options }}
           {{ range $opt := .pagelink1options }}
+          {{ if eq $opt.Name $.pagelink1.Name }}{{ else }}
           <li><a class="local" href="{{ $opt.Target }}">{{ $opt.Name }}</a></li>
+          {{ end }}
           {{ end }}
           {{ end }}
         </ul>
@@ -28,7 +30,9 @@
         <ul>
           {{ if .pagelink2options }}
           {{ range $opt := .pagelink2options }}
+          {{ if eq $opt.Name $.pagelink2.Name }}{{ else }}
           <li><a class="local" href="{{ $.pagelink1.Target }}{{ $opt.Target }}">{{ $opt.Name }}</a></li>
+          {{ end }}
           {{ end }}
           {{ end }}
         </ul>
@@ -40,7 +44,9 @@
         <ul>
           {{ if .pagelink3options }}
           {{ range $opt := .pagelink3options }}
+          {{ if eq $opt.Name $.pagelink3.Name }}{{ else }}
           <li><a class="local" href="{{ $.pagelink1.Target }}{{ $.pagelink2.Target }}{{ $opt.Target }}">{{ $opt.Name }}</a></li>
+          {{ end }}
           {{ end }}
           {{ end }}
         </ul>
@@ -49,7 +55,7 @@
     </ul>
     <ul style="float: right">
         <li>
-            <a href="https://github.com/HanEmile/r2wars-web">{{ .version }} src</a>
+            <a href="https://github.com/HanEmile/r2wars-web">{{if .version}}{{ .version }} src{{else}}src{{end}}</a>
         </li>
     </ul>
   </nav>
