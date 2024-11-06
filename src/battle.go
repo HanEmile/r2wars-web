@@ -1219,12 +1219,13 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // delete a battle
-func battleDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "DELETE":
+// TODO(emile): finish implementing the deletion of battles
+//  func battleDeleteHandler(w http.ResponseWriter, r *http.Request) {
+//  	switch r.Method {
+//  	case "DELETE":
 
-		http.Redirect(w, r, fmt.Sprintf("/battle?res=%s", battleid, msg), http.StatusSeeOther)
-	default:
-		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
-	}
-}
+//  		http.Redirect(w, r, fmt.Sprintf("/battle?res=%s", battleid, msg), http.StatusSeeOther)
+//  	default:
+//  		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
+//  	}
+//  }

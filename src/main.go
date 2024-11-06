@@ -92,7 +92,7 @@ func main() {
 	auth_needed.HandleFunc("/battle/quick", battleQuickHandler)
 	auth_needed.HandleFunc("/battle/{id}/submit", battleSubmitHandler)
 	auth_needed.HandleFunc("/battle/{id}/run", battleRunHandler)
-	auth_needed.HandleFunc("/battle/{id}/delete", battleDeleteHandler)
+	//  auth_needed.HandleFunc("/battle/{id}/delete", battleDeleteHandler)
 
 	log.Printf("[i] HTTP Server running on %s:%d\n", host, port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), r))
