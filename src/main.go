@@ -87,10 +87,29 @@ func main() {
 	auth_needed.HandleFunc("/user/{id}/profile", profileHandler)
 
 	r.HandleFunc("/battle", battlesHandler)
-	auth_needed.HandleFunc("/battle/new", battleNewHandler)
 	r.HandleFunc("/battle/{id}", battleSingleHandler)
+	auth_needed.HandleFunc("/battle/new", battleNewHandler)
+	auth_needed.HandleFunc("/battle/quick", battleQuickHandler)
 	auth_needed.HandleFunc("/battle/{id}/submit", battleSubmitHandler)
+	auth_needed.HandleFunc("/battle/{id}/run", battleRunHandler)
+	auth_needed.HandleFunc("/battle/{id}/delete", battleDeleteHandler)
 
 	log.Printf("[i] HTTP Server running on %s:%d\n", host, port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), r))
+}
+
+/* Convenience functions */
+
+// log_and_redir_with_msg takes a few args, let's go through them one by one:
+//   - w: the response writer
+//   - r: the initial request
+//   - err: the error that occurred, this one will be logged
+//   - target: the target of the redirect, this must be a format string with some format parameter
+//     receiving a string, for example `/battles/?err=%s`, the `%s` format string will then be
+//     filled with the message
+//   - msg: the message to print after being redirected
+func log_and_redir_with_msg(w http.ResponseWriter, r *http.Request, err error, target string, msg string) {
+	log.Println(err)
+	http.Redirect(w, r, fmt.Sprintf(target, msg), http.StatusSeeOther)
+	return
 }
