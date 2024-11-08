@@ -30,7 +30,7 @@ func initFlags() {
 
 	flag.StringVar(&logFilePath, "logfilepath", "./server.log", "The path to the log file")
 	flag.StringVar(&databasePath, "databasepath", "./main.db", "The path to the main database")
-	flag.StringVar(&sessiondbPath, "sessiondbpath", "./sesions.db", "The path to the session database")
+	flag.StringVar(&sessiondbPath, "sessiondbpath", "./sessions.db", "The path to the session database")
 	flag.StringVar(&templatesPath, "templates", "./templates", "The path to the templates used")
 }
 
@@ -92,7 +92,7 @@ func main() {
 	auth_needed.HandleFunc("/battle/quick", battleQuickHandler)
 	auth_needed.HandleFunc("/battle/{id}/submit", battleSubmitHandler)
 	auth_needed.HandleFunc("/battle/{id}/run", battleRunHandler)
-	//  auth_needed.HandleFunc("/battle/{id}/delete", battleDeleteHandler)
+	auth_needed.HandleFunc("/battle/{id}/delete", battleDeleteHandler)
 
 	log.Printf("[i] HTTP Server running on %s:%d\n", host, port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), r))

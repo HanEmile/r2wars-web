@@ -23,6 +23,7 @@ type Battle struct {
 	Archs     []Arch
 	Bits      []Bit
 	RawOutput string
+	MaxRounds int
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -32,8 +33,8 @@ func BattleGetAll() ([]Battle, error) {
 	return globalState.GetAllBattles()
 }
 
-func BattleCreate(name string, public bool) (int, error) {
-	return globalState.InsertBattle(Battle{Name: name, Public: public})
+func BattleCreate(name string, public bool, owner User) (int, error) {
+	return globalState.InsertBattle(Battle{Name: name, Public: public}, owner)
 }
 
 func BattleLinkBot(botid int, battleid int) error {
@@ -64,10 +65,15 @@ func BattleSaveRawOutput(battleid int, rawOutput string) error {
 	return globalState.UpdateBattleRawOutput(battleid, rawOutput)
 }
 
+func BattleDeleteID(battleid int) error {
+	return globalState.DeleteBattleByID(battleid)
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // DATABASE
 
-func (s *State) InsertBattle(battle Battle) (int, error) {
+func (s *State) InsertBattle(battle Battle, owner User) (int, error) {
+	// create the battle
 	res, err := s.db.Exec("INSERT INTO battles VALUES(NULL,?,?,?);", time.Now(), battle.Name, battle.Public)
 	if err != nil {
 		log.Println(err)
@@ -79,6 +85,14 @@ func (s *State) InsertBattle(battle Battle) (int, error) {
 		log.Println(err)
 		return -1, err
 	}
+
+	// insert the owner into the battle_owner rel
+	_, err = s.db.Exec("INSERT INTO owner_battle_rel VALUES (?, ?)", owner.ID, battle.ID)
+	if err != nil {
+		log.Println(err)
+		return -1, err
+	}
+
 	return int(id), nil
 }
 
@@ -219,6 +233,7 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 	var battlename string
 	var battlepublic bool
 	var battlerawoutput string
+	var battlemaxrounds int
 
 	var botids string
 	var botnames string
@@ -239,10 +254,15 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 	// TODO(emile): go deeper! we could fetch battle -> bot -> arch (so fetching the linked arch
 	//              for the given bot)
 
+	// COALESCE is used to set default values
+	// TODO(emile): do fancy migrations instead of the COALESCE stuff for setting defaults if
+	// no value is set beforehand
+
 	err := s.db.QueryRow(`
 	SELECT DISTINCT
 		ba.id, ba.name, ba.public, 
 		COALESCE(ba.raw_output, ""),
+		COALESCE(ba.max_rounds, 100),
 		COALESCE(group_concat(DISTINCT bb.bot_id), ""),
 		COALESCE(group_concat(DISTINCT bo.name), ""),
 		COALESCE(group_concat(DISTINCT ub.user_id), ""),
@@ -267,7 +287,7 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	WHERE ba.id=?
 	GROUP BY ba.id;
-	`, id).Scan(&battleid, &battlename, &battlepublic, &battlerawoutput, &botids, &botnames, &userids, &usernames, &archids, &archnames, &bitids, &bitnames)
+	`, id).Scan(&battleid, &battlename, &battlepublic, &battlerawoutput, &battlemaxrounds, &botids, &botnames, &userids, &usernames, &archids, &archnames, &bitids, &bitnames)
 	if err != nil {
 		log.Println(err)
 		return Battle{}, err
@@ -361,6 +381,7 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 		Archs:     archs,
 		Bits:      bits,
 		RawOutput: battlerawoutput,
+		MaxRounds: battlemaxrounds,
 	}, nil
 }
 
@@ -370,6 +391,35 @@ func (s *State) UpdateBattleRawOutput(battleid int, rawOutput string) error {
 		log.Println(err)
 		return err
 	}
+	return nil
+}
+
+// This deletes a battle and all links to users, bots, architectures and bits
+func (s *State) DeleteBattleByID(battleid int) error {
+	_, err := s.db.Exec(`
+	DELETE FROM battles WHERE battleid = ?;
+
+	DELETE FROM user_battle_rel WHERE battleid = ?;
+	DELETE FROM bot_battle_rel WHERE battleid = ?;
+	DELETE FROM arch_battle_rel WHERE battleid = ?;
+	DELETE FROM bit_battle_rel WHERE battleid = ?;
+	`, battleid, battleid, battleid, battleid, battleid)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.db.Exec(`
+	DELETE FROM battles
+	WHERE battleid = ?
+	`, battleid)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	return nil
 }
 
@@ -498,6 +548,20 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		t.ExecuteTemplate(w, "battleNew", data)
 
 	case "POST":
+		data := map[string]interface{}{}
+
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"].(string)
+
+		// get data needed
+		user, err := UserGetUserFromUsername(username)
+		if err != nil {
+			log.Println(err)
+			data["err"] = "Could not fetch the user"
+		} else {
+			data["user"] = user
+		}
+
 		// parse the post parameters
 		r.ParseForm()
 		name := r.Form.Get("name")
@@ -538,7 +602,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		if name != "" {
 			// create the battle itself
 			log.Println("Creating battle")
-			battleid, err := BattleCreate(name, public)
+			battleid, err := BattleCreate(name, public, user)
 			if err != nil {
 				log.Println(err)
 				msg := "ERROR: Could not create due to internal reasons"
@@ -631,6 +695,20 @@ func battleQuickHandler(w http.ResponseWriter, r *http.Request) {
 		t.ExecuteTemplate(w, "battleQuick", data)
 
 	case "POST":
+		data := map[string]interface{}{}
+
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"].(string)
+
+		// get data needed
+		user, err := UserGetUserFromUsername(username)
+		if err != nil {
+			log.Println(err)
+			data["err"] = "Could not fetch the user"
+		} else {
+			data["user"] = user
+		}
+
 		// parse the post parameters
 		r.ParseForm()
 
@@ -658,7 +736,7 @@ func battleQuickHandler(w http.ResponseWriter, r *http.Request) {
 
 		// create the battle itself
 		log.Println("Creating battle")
-		battleid, err := BattleCreate("quick", public)
+		battleid, err := BattleCreate("quick", public, user)
 		if err != nil {
 			log.Println(err)
 			msg := "ERROR: Could not create due to internal reasons"
@@ -872,6 +950,20 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 
 		// at this point, we're sure the user is allowed to edit the battle
 
+		data := map[string]interface{}{}
+
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"].(string)
+
+		// get data needed
+		user, err := UserGetUserFromUsername(username)
+		if err != nil {
+			log.Println(err)
+			data["err"] = "Could not fetch the user"
+		} else {
+			data["user"] = user
+		}
+
 		r.ParseForm()
 
 		log.Println("r.Form: ", r.Form)
@@ -919,7 +1011,7 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		new_battle := Battle{int(battleid), form_name, []Bot{}, []User{}, public, []Arch{}, []Bit{}, ""}
+		new_battle := Battle{int(battleid), form_name, []Bot{}, []User{user}, public, []Arch{}, []Bit{}, "", 100}
 
 		log.Println("Updating battle...")
 		err = BattleUpdate(new_battle)
@@ -1220,12 +1312,65 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 
 // delete a battle
 // TODO(emile): finish implementing the deletion of battles
-//  func battleDeleteHandler(w http.ResponseWriter, r *http.Request) {
-//  	switch r.Method {
-//  	case "DELETE":
+func battleDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	battleid, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Invalid battle id"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-//  		http.Redirect(w, r, fmt.Sprintf("/battle?res=%s", battleid, msg), http.StatusSeeOther)
-//  	default:
-//  		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
-//  	}
-//  }
+	redir_target := fmt.Sprintf("/battle/%d?res=%%s", battleid)
+
+	switch r.Method {
+	case "POST": // can't send a DELETE with pure HTML...
+
+		// get the current user
+		session, _ := globalState.sessions.Get(r, "session")
+		username := session.Values["username"]
+		if username == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		viewer, err := UserGetUserFromUsername(username.(string))
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the id for your username")
+			return
+		}
+
+		// get the battle
+		battle, err := BattleGetByIdDeep(int(battleid))
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the battle given the id provided")
+			return
+		}
+
+		battle_owned_by_requesting_user := false
+		for _, owner := range battle.Owners {
+
+			// if the requesting users id is equal to an owners id, we're allowed to delete
+			// the battle
+			if viewer.ID == owner.ID {
+				battle_owned_by_requesting_user = true
+				break
+			}
+		}
+
+		// check that the user that created the battle is the current user, if not, return
+		if battle_owned_by_requesting_user == false {
+			msg := "You aren't in the owners list of the battle, so you can't delete this battle"
+			log_and_redir_with_msg(w, r, err, redir_target, msg)
+			return
+		}
+
+		BattleDeleteID(battleid)
+
+		msg := "Successfully deleted the battle"
+		http.Redirect(w, r, fmt.Sprintf("/battle/%d?res=%s", battleid, msg), http.StatusSeeOther)
+	default:
+		log.Println("expected POST, got ", r.Method)
+		http.Redirect(w, r, "/", http.StatusMethodNotAllowed)
+	}
+}

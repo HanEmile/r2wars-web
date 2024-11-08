@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS battles (
 	name TEXT,
 	public BOOLEAN,
 	raw_output TEXT
+	max_rounds INTEGER
 );
 CREATE TABLE IF NOT EXISTS archs (
 	id INTEGER NOT NULL PRIMARY KEY,
@@ -86,6 +87,11 @@ CREATE TABLE IF NOT EXISTS bit_bot_rel (
 );
 
 CREATE TABLE IF NOT EXISTS user_battle_rel (
+	user_id INTEGER,
+	battle_id INTEGER,
+	PRIMARY KEY(user_id, battle_id)
+);
+CREATE TABLE IF NOT EXISTS owner_battle_rel (
 	user_id INTEGER,
 	battle_id INTEGER,
 	PRIMARY KEY(user_id, battle_id)

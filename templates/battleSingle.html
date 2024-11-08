@@ -11,116 +11,115 @@
 <a href="#settings">Settings</a>
 <a href="#registered-bots">Registered Bots</a>
 <a href="#output">Output</a>
+<a href="#debug">Debug</a>
   </pre>
 
   <span id="settings"></span>
   <h2><a href="#settings">Settings</a></h2>
 
-  <form id="delete" method="DELETE" action="/battle/{{ .battle.ID }}/delete">
-  </form>
-
   <table>
-    <form id="battle" method="POST" action="/battle/{{ .battle.ID }}">
-      <tr>
-        <td><label for="name">Name:</label></td>
-        <td><input class="border" type="text" id="name" name="name" value="{{ .battle.Name }}"></td>
-      </tr>
+    <tbody>
+      <form id="battle" method="POST" action="/battle/{{ .battle.ID }}">
+        <tr>
+          <td><label for="name">Name:</label></td>
+          <td><input class="border" type="text" id="name" name="name" value="{{ .battle.Name }}"></td>
+        </tr>
 
-      <!--
-      <tr>
-        <td><label for="latestBotSubmission">Latest Bot Submission</label></td>
-        <td><input
-              class="border"
-              type="datetime-local"
-              id="latestBotSubmission"
-              name="latestBotSubmission"
-              value="2024-11-08T12:00"
-              ></td>
-      </tr>
+        <!--
+        <tr>
+          <td><label for="latestBotSubmission">Latest Bot Submission</label></td>
+          <td><input
+                class="border"
+                type="datetime-local"
+                id="latestBotSubmission"
+                name="latestBotSubmission"
+                value="2024-11-08T12:00"
+                ></td>
+        </tr>
 
-      <tr>
-        <td><label for="battleStart">Battle Start</label></td>
-        <td><input
-              class="border"
-              type="datetime-local"
-              id="battleStart"
-              name="battleStart"
-              value="2024-11-08T16:00"
-              ></td>
-      </tr>
+        <tr>
+          <td><label for="battleStart">Battle Start</label></td>
+          <td><input
+                class="border"
+                type="datetime-local"
+                id="battleStart"
+                name="battleStart"
+                value="2024-11-08T16:00"
+                ></td>
+        </tr>
 
-      <tr>
-        <td><label for="owners">Owners:</label></td>
-        <td>
-          {{ range $idx, $usr := .battle.Owners }}{{if $idx}},{{end}}<a href="/user/{{ $usr.ID }}">{{ $usr.Name }}</a>{{ end }}
+        <tr>
+          <td><label for="owners">Owners:</label></td>
+          <td>
+            {{ range $idx, $usr := .battle.Owners }}{{if $idx}},{{end}}<a href="/user/{{ $usr.ID }}">{{ $usr.Name }}</a>{{ end }}
+          </td>
+        </tr>
+        -->
+
+        <tr>
+          <td><label for="bots">Bots submitted:</label></td>
+          <td>
+            {{ range $idx, $bot := .battle.Bots }}{{if $idx}},{{end}}<a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>{{ end }}
+          </td>
+        </tr>
+
+        <!--
+        <tr>
+          <td><label for="public">Public?</label></td>
+          <td><input type="checkbox" id="public" name="public" {{ if .battle.Public }}checked{{end}}/></td>
+        </tr>
+        -->
+
+        <tr>
+          <td>Archs</td>
+          <td>
+            {{ range $idx, $arch := .archs }}{{if $idx}},{{end}}
+              <input
+                type="checkbox"
+                class="check-with-label"
+                name="arch-{{$arch.ID}}"
+                id="arch-{{$arch.ID}}"
+                {{if $arch.Enabled}}checked{{end}}/>
+              <label class="label-for-check" for="arch-{{$arch.ID}}">{{$arch.Name}}</label>
+            {{- end }}
+          </td>
         </td>
-      </tr>
-      -->
 
-      <tr>
-        <td><label for="bots">Bots submitted:</label></td>
-        <td>
-          {{ range $idx, $bot := .battle.Bots }}{{if $idx}},{{end}}<a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>{{ end }}
-        </td>
-      </tr>
-
-      <!--
-      <tr>
-        <td><label for="public">Public?</label></td>
-        <td><input type="checkbox" id="public" name="public" {{ if .battle.Public }}checked{{end}}/></td>
-      </tr>
-      -->
-
-      <tr>
-        <td>Archs</td>
-        <td>
-          {{ range $idx, $arch := .archs }}{{if $idx}},{{end}}
+        <tr>
+          <td>Bits</td>
+          <td>{{ range $idx, $bit := .bits }}{{if $idx}},{{end}}
             <input
               type="checkbox"
               class="check-with-label"
-              name="arch-{{$arch.ID}}"
-              id="arch-{{$arch.ID}}"
-              {{if $arch.Enabled}}checked{{end}}/>
-            <label class="label-for-check" for="arch-{{$arch.ID}}">{{$arch.Name}}</label>
-          {{- end }}
-        </td>
-      </td>
+              id="bit-{{$bit.ID}}"
+              name="bit-{{$bit.ID}}"
+              {{if $bit.Enabled}}checked{{end}}/>
+            <label class="label-for-check" for="bit-{{$bit.ID}}">{{$bit.Name}}</label>
+            {{- end }}
+          </td>
+        </tr>
 
-      <tr>
-        <td>Bits</td>
-        <td>{{ range $idx, $bit := .bits }}{{if $idx}},{{end}}
-          <input
-            type="checkbox"
-            class="check-with-label"
-            id="bit-{{$bit.ID}}"
-            name="bit-{{$bit.ID}}"
-            {{if $bit.Enabled}}checked{{end}}/>
-          <label class="label-for-check" for="bit-{{$bit.ID}}">{{$bit.Name}}</label>
-          {{- end }}
-        </td>
-      </td>
+        <tr>
+          <td></td>
+          <td>
+            <table>
+              <tr>
+                <td style="width: 33%;"><input class="border" type="submit" value="Save"></td>
+                <td style="width: 33%;"></td>
+                <td style="width: 33%; ">
+                  <!--<input type="submit" value="Delete this battle" form="delete" style="border: 1px solid red; ">-->
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </form>
 
-      <tr>
-        <td></td>
-        <td>
-          <table>
-            <tr>
-              <td style="width: 33%;"><input class="border" type="submit" value="Save"></td>
-              <td style="width: 33%;"></td>
-              <td style="width: 33%; ">
-                <input type="submit" value="Delete this battle" form="delete" style="border: 1px solid red; ">
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-
-    </form>
 
     {{ if .res }}
     <tr>
       <td></td>
-      <td>{{ .res }}</td>
+      <td><div style="border: 1px solid blue; padding: 1ex">{{ .res }}</div></td>
     </tr>
     {{ end }}
 
@@ -131,41 +130,38 @@
 
     {{ if .myBots }}
 
-          <form method="POST" action="/battle/{{ .battle.ID }}/submit">
-    <tr>
-      <td><label for="name">My Bots</label></td>
-      <td style="width: 100%;">
-        <table style="width: 100%;">
-
-            {{ range $bot := .myBots  }}
-            <tr class="trhover">
-              <td style="text-align: center; vertical-align: middle; width: 2ex;">
-                <input
-                  type="checkbox"
-                  id="bot-{{$bot.ID}}"
-                  name="bot-{{$bot.ID}}"
-                  value="{{$bot.ID}}"
-                  {{ range $bbot := $.battle.Bots }}
-                  {{ if eq $bot.ID $bbot.ID }}checked{{ end }}
-                  {{ end }}
-                  />
-                <label for="bot-{{$bot.ID}}">
-                  <a href="/bot/{{$bot.ID}}">{{$bot.Name}}</a>
-                </label>
-              </td>
-              <td style="vertical-align: middle">
-              </td>
-            </tr>
-            {{ end }}
-
-          
-        </table>
-      </td>
-    </tr>
-            <tr>
-              <td colspan="5"><input class="border" type="submit" value="Submit bots"></td>
-            </tr>
-          </form>
+    <form method="POST" action="/battle/{{ .battle.ID }}/submit">
+      <tr>
+        <td><label for="name">My Bots</label></td>
+        <td style="width: 100%;">
+          <table style="width: 100%;">
+              {{ range $bot := .myBots  }}
+              <tr class="trhover">
+                <td style="text-align: center; vertical-align: middle; width: 2ex;">
+                  <input
+                    type="checkbox"
+                    id="bot-{{$bot.ID}}"
+                    name="bot-{{$bot.ID}}"
+                    value="{{$bot.ID}}"
+                    {{ range $bbot := $.battle.Bots }}
+                    {{ if eq $bot.ID $bbot.ID }}checked{{ end }}
+                    {{ end }}
+                    />
+                  <label for="bot-{{$bot.ID}}">
+                    <a href="/bot/{{$bot.ID}}">{{$bot.Name}}</a>
+                  </label>
+                </td>
+                <td style="vertical-align: middle">
+                </td>
+              </tr>
+              {{ end }}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="5"><input class="border" type="submit" value="Submit bots"></td>
+      </tr>
+    </form>
 
     {{ else }}
 
@@ -176,12 +172,19 @@
 
     {{ end }}
 
+    </tbody>
   <table>
 
   <br>
 
   <form method="POST" action="/battle/{{ .battle.ID }}/run">
     <input class="border" type="submit" value="Run the Battle">
+  </form>
+
+  <br><br>
+
+  <form id="delete" method="POST" action="/battle/{{ .battle.ID }}/delete">
+    <input type="submit" value="Delete this battle" form="delete" style="border: 1px solid red; ">
   </form>
 
   <span id="registered bots"></span>
@@ -194,7 +197,10 @@
 
   <pre>{{ .battle.RawOutput }}</pre>
 
-  <span id="current-standings"></span>
+  <span id="debug"></span>
+  <h2><a href="#debug">Debug</a></h2>
+
+  <pre>{{ .battle }}</pre>
 </body>
 {{ template "footer" . }}
 {{ end }}

@@ -8,7 +8,6 @@ require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.3.0
 	github.com/radareorg/r2pipe-go v0.2.1
-	github.com/xiaoqidun/entps v1.32.0
 	golang.org/x/crypto v0.26.0
 	modernc.org/sqlite v1.32.0
 )

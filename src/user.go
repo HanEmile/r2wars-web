@@ -119,7 +119,9 @@ func (s *State) UpdateUserUsername(id int, new_username string) error {
 
 // Links the given bot to the given user in the user_bot_rel table
 func (s *State) LinkUserBot(username string, botid int) error {
-	_, err := s.db.Exec("INSERT INTO user_bot_rel VALUES ((SELECT id FROM users WHERE name=?), ?)", username, botid)
+	_, err := s.db.Exec(`
+		INSERT INTO user_bot_rel
+		VALUES ((SELECT id FROM users WHERE name=?), ?)`, username, botid)
 	if err != nil {
 		return err
 	} else {
@@ -153,7 +155,11 @@ func (s *State) GetUserFromUsername(username string) (User, error) {
 // Returns the bots belonging to the given user
 // TODO(emile): Also fetch the bits and the archs for displaying in the single battle page. In order to do so, join in both those tables
 func (s *State) GetUserBotsUsername(username string) ([]Bot, error) {
-	rows, err := s.db.Query("SELECT id, name, source FROM bots b LEFT JOIN user_bot_rel ub ON ub.bot_id = b.id WHERE ub.user_id=(SELECT id FROM users WHERE name=?)", username)
+	rows, err := s.db.Query(`
+		SELECT id, name, source
+		FROM bots b
+		LEFT JOIN user_bot_rel ub ON ub.bot_id = b.id
+		WHERE ub.user_id=(SELECT id FROM users WHERE name=?)`, username)
 	defer rows.Close()
 	if err != nil {
 		return nil, err
@@ -175,7 +181,11 @@ func (s *State) GetUserBotsUsername(username string) ([]Bot, error) {
 
 // Returns the bots belonging to the given user
 func (s *State) GetUserBotsId(id int) ([]Bot, error) {
-	rows, err := s.db.Query("SELECT id, name, source FROM bots b LEFT JOIN user_bot_rel ub ON ub.bot_id = b.id WHERE ub.user_id=?", id)
+	rows, err := s.db.Query(`
+		SELECT id, name, source
+		FROM bots b
+		LEFT JOIN user_bot_rel ub ON ub.bot_id = b.id
+		WHERE ub.user_id=?`, id)
 	defer rows.Close()
 	if err != nil {
 		return nil, err
