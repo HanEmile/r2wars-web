@@ -50,7 +50,21 @@
           <label class="label-for-check" for="bit-{{$bit.ID}}">{{$bit.Name}}</label>
           {{- end }}
         </td>
-      </td>
+      </tr>
+
+      <tr>
+        <td>Arena size:</td>
+        <td>
+          <input class="border" type="number" name="arena-size" id="arena-size" value="4096"/>
+        </td>
+      </tr>
+
+      <tr>
+        <td>Max Rounds:</td>
+        <td>
+          <input class="border" type="number" name="max-rounds" id="max-rounds" value="100"/>
+        </td>
+      </tr>
 
       <tr>
         <td>Public:</td>
@@ -63,6 +77,23 @@
       </td>
 
       <tr>
+        <td>Owners</td>
+        <td>
+          {{ $viewerID := .user.ID }}
+          {{ range $idx, $u := .users}}{{if $idx}},{{- end}}
+            <input
+              type="checkbox"
+              class="check-with-label"
+              name="owner-{{ $u.ID }}"
+              id="owner-{{ $u.ID }}"
+              {{if eq $u.ID $viewerID}}checked{{end}}
+              />
+            <label class="label-for-check" for="owner-{{ $u.ID }}">{{$u.Name}}</label>
+          {{- end }}
+        </td>
+      </tr>
+
+      <tr>
         <td></td>
         <td><input class="border" type="submit" value="Create"></td>
       </tr>
@@ -70,11 +101,16 @@
       {{ if .res }}
       <tr>
         <td></td>
-        <td>{{ .res }}</td>
+        <td><div style="border: 1px solid blue; padding: 1ex">{{ .res }}</div></td>
       </tr>
       {{ end }}
     </form>
   </table>
+
+  <span id="debug"></span>
+  <h2><a href="#debug">Debug</a></h2>
+
+  <pre>{{ . }}</pre>
 </body>
 {{ template "footer" . }}
 {{ end }}

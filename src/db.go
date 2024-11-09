@@ -23,8 +23,9 @@ CREATE TABLE IF NOT EXISTS battles (
 	created_at DATETIME NOT NULL,
 	name TEXT,
 	public BOOLEAN,
-	raw_output TEXT
-	max_rounds INTEGER
+	raw_output TEXT,
+	max_rounds INTEGER,
+	arena_size INTEGER
 );
 CREATE TABLE IF NOT EXISTS archs (
 	id INTEGER NOT NULL PRIMARY KEY,

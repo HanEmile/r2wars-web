@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,6 +25,7 @@ type Battle struct {
 	Bits      []Bit
 	RawOutput string
 	MaxRounds int
+	ArenaSize int
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -33,8 +35,8 @@ func BattleGetAll() ([]Battle, error) {
 	return globalState.GetAllBattles()
 }
 
-func BattleCreate(name string, public bool, owner User) (int, error) {
-	return globalState.InsertBattle(Battle{Name: name, Public: public}, owner)
+func BattleCreate(battle Battle, owner User) (int, error) {
+	return globalState.InsertBattle(battle, owner)
 }
 
 func BattleLinkBot(botid int, battleid int) error {
@@ -61,6 +63,10 @@ func BattleLinkBitIDs(battleid int, bitIDs []int) error {
 	return globalState.LinkBitIDsToBattle(battleid, bitIDs)
 }
 
+func BattleLinkOwnerIDs(battleid int, ownerIDs []int) error {
+	return globalState.LinkOwnerIDsToBattle(battleid, ownerIDs)
+}
+
 func BattleSaveRawOutput(battleid int, rawOutput string) error {
 	return globalState.UpdateBattleRawOutput(battleid, rawOutput)
 }
@@ -74,7 +80,16 @@ func BattleDeleteID(battleid int) error {
 
 func (s *State) InsertBattle(battle Battle, owner User) (int, error) {
 	// create the battle
-	res, err := s.db.Exec("INSERT INTO battles VALUES(NULL,?,?,?);", time.Now(), battle.Name, battle.Public)
+	res, err := s.db.Exec(`
+		INSERT INTO battles
+		VALUES(NULL,?,?,?,?,?,?)
+		`, time.Now(),
+		battle.Name,
+		battle.Public,
+		battle.RawOutput,
+		battle.MaxRounds,
+		battle.ArenaSize)
+
 	if err != nil {
 		log.Println(err)
 		return -1, err
@@ -97,16 +112,37 @@ func (s *State) InsertBattle(battle Battle, owner User) (int, error) {
 }
 
 func (s *State) UpdateBattle(battle Battle) error {
-	_, err := s.db.Exec("UPDATE battles SET name=?, public=? WHERE id=?", battle.Name, battle.Public, battle.ID)
+	log.Println("Updating battle:")
+	log.Println(battle.ArenaSize)
+	_, err := s.db.Exec(`
+		UPDATE battles
+		SET name=?, public=?, arena_size=?, max_rounds=?
+		WHERE id=?`,
+		battle.Name,
+		battle.Public,
+		battle.ArenaSize,
+		battle.MaxRounds,
+		battle.ID)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
+	log.Println("Done updating")
 	return nil
 }
 
 func (s *State) LinkBotBattle(botid int, battleid int) error {
 	_, err := s.db.Exec("INSERT INTO bot_battle_rel VALUES (?, ?)", botid, battleid)
+	if err != nil {
+		log.Println(err)
+		return err
+	} else {
+		return nil
+	}
+}
+
+func (s *State) LinkOwnerBattle(battleid int, ownerid int) error {
+	_, err := s.db.Exec("INSERT INTO owner_battle_rel VALUES (?, ?)", ownerid, battleid)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -148,7 +184,7 @@ func (s *State) UnlinkAllBotsForUserFromBattle(userid int, battleid int) error {
 
 func (s *State) LinkArchIDsToBattle(battleid int, archIDs []int) error {
 	// delete preexisting links
-	_, err := s.db.Exec("DELETE FROM arch_battle_rel WHERE battle_id=?;", battleid)
+	_, err := s.db.Exec("DELETE FROM arch_battle_rel WHERE battle_id=?", battleid)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -177,7 +213,7 @@ func (s *State) LinkArchIDsToBattle(battleid int, archIDs []int) error {
 
 func (s *State) LinkBitIDsToBattle(battleid int, bitIDs []int) error {
 	// delete preexisting links
-	_, err := s.db.Exec("DELETE FROM bit_battle_rel WHERE battle_id=?;", battleid)
+	_, err := s.db.Exec("DELETE FROM bit_battle_rel WHERE battle_id=?", battleid)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -189,6 +225,35 @@ func (s *State) LinkBitIDsToBattle(battleid int, bitIDs []int) error {
 	for idx, id := range bitIDs {
 		query += fmt.Sprintf("(%d, %d)", id, battleid)
 		if idx != len(bitIDs)-1 {
+			query += ", "
+		}
+	}
+	query += ";"
+	log.Println(query)
+
+	_, err = s.db.Exec(query)
+	if err != nil {
+		log.Println(err)
+		return err
+	} else {
+		return nil
+	}
+}
+
+func (s *State) LinkOwnerIDsToBattle(battleid int, ownerIDs []int) error {
+	// delete preexisting links
+	_, err := s.db.Exec("DELETE FROM owner_battle_rel WHERE battle_id=?", battleid)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	// yes, we're building this by hand, but as we only insert int's I'm just confident that whoever
+	// gets some sqli here just deserves it :D
+	query := "INSERT INTO owner_battle_rel (user_id, battle_id) VALUES"
+	for idx, id := range ownerIDs {
+		query += fmt.Sprintf("(%d, %d)", id, battleid)
+		if idx != len(ownerIDs)-1 {
 			query += ", "
 		}
 	}
@@ -234,6 +299,7 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 	var battlepublic bool
 	var battlerawoutput string
 	var battlemaxrounds int
+	var battlearenasize int
 
 	var botids string
 	var botnames string
@@ -246,6 +312,9 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 
 	var bitids string
 	var bitnames string
+
+	var ownerids string
+	var ownernames string
 
 	// battles have associated bots and users, we're fetching 'em all!
 
@@ -263,14 +332,22 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 		ba.id, ba.name, ba.public, 
 		COALESCE(ba.raw_output, ""),
 		COALESCE(ba.max_rounds, 100),
+		COALESCE(ba.arena_size, 4096),
+
 		COALESCE(group_concat(DISTINCT bb.bot_id), ""),
 		COALESCE(group_concat(DISTINCT bo.name), ""),
+
 		COALESCE(group_concat(DISTINCT ub.user_id), ""),
 		COALESCE(group_concat(DISTINCT us.name), ""),
+
 		COALESCE(group_concat(DISTINCT ab.arch_id), ""),
 		COALESCE(group_concat(DISTINCT ar.name), ""),
+
 		COALESCE(group_concat(DISTINCT bitbat.bit_id), ""),
-		COALESCE(group_concat(DISTINCT bi.name), "")
+		COALESCE(group_concat(DISTINCT bi.name), ""),
+
+		COALESCE(group_concat(DISTINCT ownerbat.user_id), ""),
+		COALESCE(group_concat(DISTINCT owner.name), "")
 	FROM battles ba
 
 	LEFT JOIN bot_battle_rel bb ON bb.battle_id = ba.id
@@ -285,9 +362,12 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 	LEFT JOIN bit_battle_rel bitbat ON bitbat.battle_id = ba.id
 	LEFT JOIN bits bi ON bi.id = bitbat.bit_id
 
+	LEFT JOIN owner_battle_rel ownerbat ON ownerbat.battle_id = ba.id
+	LEFT JOIN users owner ON owner.id = ownerbat.user_id
+
 	WHERE ba.id=?
 	GROUP BY ba.id;
-	`, id).Scan(&battleid, &battlename, &battlepublic, &battlerawoutput, &battlemaxrounds, &botids, &botnames, &userids, &usernames, &archids, &archnames, &bitids, &bitnames)
+	`, id).Scan(&battleid, &battlename, &battlepublic, &battlerawoutput, &battlemaxrounds, &battlearenasize, &botids, &botnames, &userids, &usernames, &archids, &archnames, &bitids, &bitnames, &ownerids, &ownernames)
 	if err != nil {
 		log.Println(err)
 		return Battle{}, err
@@ -372,16 +452,35 @@ func (s *State) GetBattleByIdDeep(id int) (Battle, error) {
 		bits = []Bit{}
 	}
 
+	// assemble the owners
+	ownerIDList := strings.Split(ownerids, ",")
+	ownerNameList := strings.Split(ownernames, ",")
+
+	var owners []User
+	if ownerIDList[0] != "" {
+		for i := range ownerIDList {
+			id, err := strconv.Atoi(ownerIDList[i])
+			if err != nil {
+				log.Println(err)
+				return Battle{}, err
+			}
+			owners = append(owners, User{id, ownerNameList[i], nil})
+		}
+	} else {
+		owners = []User{}
+	}
+
 	return Battle{
 		ID:        battleid,
 		Name:      battlename,
 		Bots:      bots,
-		Owners:    users,
+		Owners:    owners,
 		Public:    battlepublic,
 		Archs:     archs,
 		Bits:      bits,
 		RawOutput: battlerawoutput,
 		MaxRounds: battlemaxrounds,
+		ArenaSize: battlearenasize,
 	}, nil
 }
 
@@ -534,6 +633,14 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 			data["bits"] = bits
 		}
 
+		users, err := UserGetAll()
+		if err != nil {
+			log.Println(err)
+			data["err"] = "Could not fetch all users"
+		} else {
+			data["users"] = users
+		}
+
 		// get the template
 		t, err := template.ParseGlob(fmt.Sprintf("%s/*.html", templatesPath))
 		if err != nil {
@@ -545,7 +652,10 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// exec!
-		t.ExecuteTemplate(w, "battleNew", data)
+		err = t.ExecuteTemplate(w, "battleNew", data)
+		if err != nil {
+			log.Println(err)
+		}
 
 	case "POST":
 		data := map[string]interface{}{}
@@ -565,6 +675,24 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		// parse the post parameters
 		r.ParseForm()
 		name := r.Form.Get("name")
+		arenasize, err := strconv.Atoi(r.Form.Get("arena-size"))
+		if err != nil {
+			// TODO(emile): use the log_and_redir function in here (and the surrounding code)
+
+			log.Println(err)
+			msg := "ERROR: Invalid arch id"
+			http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
+			return
+		}
+		maxrounds, err := strconv.Atoi(r.Form.Get("max-rounds"))
+		if err != nil {
+			// TODO(emile): use the log_and_redir function in here (and the surrounding code)
+
+			log.Println(err)
+			msg := "ERROR: Invalid arch id"
+			http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
+			return
+		}
 
 		var public bool
 		query_public := r.Form.Get("public")
@@ -576,7 +704,7 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		var archIDs []int
 		var bitIDs []int
 
-		for k, _ := range r.Form {
+		for k := range r.Form {
 			if strings.HasPrefix(k, "arch-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "arch-"))
 				if err != nil {
@@ -602,7 +730,19 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 		if name != "" {
 			// create the battle itself
 			log.Println("Creating battle")
-			battleid, err := BattleCreate(name, public, user)
+			newbattle := Battle{
+				0,
+				name,
+				nil,
+				nil,
+				public,
+				nil,
+				nil,
+				"",
+				maxrounds,
+				arenasize,
+			}
+			battleid, err := BattleCreate(newbattle, user)
 			if err != nil {
 				log.Println(err)
 				msg := "ERROR: Could not create due to internal reasons"
@@ -621,6 +761,15 @@ func battleNewHandler(w http.ResponseWriter, r *http.Request) {
 
 			// link bits to battle
 			err = BattleLinkBitIDs(battleid, bitIDs)
+			if err != nil {
+				log.Println(err)
+				msg := "ERROR: Could not create due to internal reasons"
+				http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
+				return
+			}
+
+			// link owner to battle
+			err = BattleLinkOwnerIDs(battleid, []int{user.ID})
 			if err != nil {
 				log.Println(err)
 				msg := "ERROR: Could not create due to internal reasons"
@@ -718,10 +867,29 @@ func battleQuickHandler(w http.ResponseWriter, r *http.Request) {
 			public = true
 		}
 
+		arenasize, err := strconv.Atoi(r.Form.Get("arena-size"))
+		if err != nil {
+			// TODO(emile): use the log_and_redir function in here (and the surrounding code)
+
+			log.Println(err)
+			msg := "ERROR: Invalid arch id"
+			http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
+			return
+		}
+		maxrounds, err := strconv.Atoi(r.Form.Get("max-rounds"))
+		if err != nil {
+			// TODO(emile): use the log_and_redir function in here (and the surrounding code)
+
+			log.Println(err)
+			msg := "ERROR: Invalid arch id"
+			http.Redirect(w, r, fmt.Sprintf("/battle/new?res=%s", msg), http.StatusSeeOther)
+			return
+		}
+
 		// gather the information from the arch and bit selection
 		var botIDs []int
 
-		for k, _ := range r.Form {
+		for k := range r.Form {
 			if strings.HasPrefix(k, "bot-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "bot-"))
 				if err != nil {
@@ -736,7 +904,19 @@ func battleQuickHandler(w http.ResponseWriter, r *http.Request) {
 
 		// create the battle itself
 		log.Println("Creating battle")
-		battleid, err := BattleCreate("quick", public, user)
+		newbattle := Battle{
+			0,
+			fmt.Sprintf("quick-%d", rand.Intn(10000)),
+			nil,
+			nil,
+			public,
+			nil,
+			nil,
+			"",
+			maxrounds,
+			arenasize,
+		}
+		battleid, err := BattleCreate(newbattle, user)
 		if err != nil {
 			log.Println(err)
 			msg := "ERROR: Could not create due to internal reasons"
@@ -819,6 +999,13 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data["user"] = viewer
+
+		users, err := UserGetAll()
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Could not get the users")
+			return
+		}
+		data["users"] = users
 
 		// get the battle including it's users, bots, archs, bits
 		battle, err := BattleGetByIdDeep(int(battleid))
@@ -968,6 +1155,11 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("r.Form: ", r.Form)
 		form_name := r.Form.Get("name")
+		arenasize, err := strconv.Atoi(r.Form.Get("arena-size"))
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target, "Invalid Arena size")
+			return
+		}
 
 		var public bool
 		if r.Form.Get("public") == "on" {
@@ -977,8 +1169,11 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 		// gather the information from the arch and bit selection
 		var archIDs []int
 		var bitIDs []int
+		var ownerIDs []int
 
-		for k, _ := range r.Form {
+		log.Println(r.Form)
+
+		for k := range r.Form {
 			if strings.HasPrefix(k, "arch-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "arch-"))
 				if err != nil {
@@ -995,7 +1190,29 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				bitIDs = append(bitIDs, id)
 			}
+			if strings.HasPrefix(k, "owner-") {
+				id, err := strconv.Atoi(strings.TrimPrefix(k, "owner-"))
+				if err != nil {
+					log_and_redir_with_msg(w, r, err, redir_target, "Invalid Owner ID")
+					return
+				}
+				ownerIDs = append(ownerIDs, id)
+			}
 		}
+
+		// CHECK THAT THE USER REQUESTING CHANGES IS ALREADY PART OF THE OWNERS
+		allowedToEdit := false
+		for _, ownerID := range ownerIDs {
+			if user.ID == ownerID {
+				allowedToEdit = true
+			}
+		}
+		if allowedToEdit == false {
+			log_and_redir_with_msg(w, r, err, redir_target+"#settings", "You aren't an owner and aren't allowed to edit the settings")
+			return
+		}
+
+		// DATABASE MANIPUTLATION BELOW
 
 		// link archs to battle
 		err = BattleLinkArchIDs(battleid, archIDs)
@@ -1011,7 +1228,14 @@ func battleSingleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		new_battle := Battle{int(battleid), form_name, []Bot{}, []User{user}, public, []Arch{}, []Bit{}, "", 100}
+		// link bits to battle
+		err = BattleLinkOwnerIDs(battleid, ownerIDs)
+		if err != nil {
+			log_and_redir_with_msg(w, r, err, redir_target+"#settings", "Could not link owner id to battle")
+			return
+		}
+
+		new_battle := Battle{int(battleid), form_name, []Bot{}, []User{user}, public, []Arch{}, []Bit{}, "", 100, arenasize}
 
 		log.Println("Updating battle...")
 		err = BattleUpdate(new_battle)
@@ -1062,7 +1286,7 @@ func battleSubmitHandler(w http.ResponseWriter, r *http.Request) {
 
 		// get all the form values that contain the bot that shall be submitted
 		var botIDs []int
-		for k, _ := range r.Form {
+		for k := range r.Form {
 			if strings.HasPrefix(k, "bot-") {
 				id, err := strconv.Atoi(strings.TrimPrefix(k, "bot-"))
 				if err != nil {
@@ -1170,30 +1394,57 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// open radare without input for building the bot
-		// TODO(emile): configure a variable memsize for the arena
-		r2p1, err := r2pipe.NewPipe("malloc://4096")
-		if err != nil {
-			panic(err)
-		}
-		defer r2p1.Close()
-
 		// Fetch the battle information
 		// This includes all bots linked to the battle
 		log.Printf("user %+v wants to run the battle", user)
 		fullDeepBattle, err := BattleGetByIdDeep(battleid)
 
+		// open radare without input for building the bot
+		// TODO(emile): configure a variable memsize for the arena
+		cmd := fmt.Sprintf("malloc://%d", fullDeepBattle.ArenaSize)
+		r2p1, err := r2pipe.NewPipe(cmd)
+		if err != nil {
+			panic(err)
+		}
+		defer r2p1.Close()
+
 		var botSources []string
 		var rawOutput string
+
+		cmd = fmt.Sprintf("pxc %d @ 0x0", fullDeepBattle.ArenaSize)
+		output, _ := r2cmd(r2p1, cmd)
+		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s\n", cmd, output)
+
+		// TODO(emile): currently hardcoded to two bots, extract this anonymous struct into a named struct and make this work with > 2 bots
+		runtimeBots := []struct {
+			Name     string
+			Regs     string
+			BaseAddr int
+			ArchName string
+			BitsName string
+		}{
+			{Name: "", Regs: "", BaseAddr: 0, ArchName: "", BitsName: ""},
+			{Name: "", Regs: "", BaseAddr: 0, ArchName: "", BitsName: ""},
+		}
+
+		rawOutput += "[0x00000000]> # Assembling the bots\n"
 
 		// for each bot involved within the battle, we need to fetch it again, as the deep battle
 		// fech doesn't fetch that deep (it fetches the batle and the corresponding bots, but only
 		// their ids and names and not the archs and bits associated)
-		for _, b := range fullDeepBattle.Bots {
+		for i, b := range fullDeepBattle.Bots {
 			bot, err := BotGetById(b.ID)
 			if err != nil {
 				log.Println(err)
 			}
+
+			runtimeBots[i].Name = bot.Name
+
+			// TODO(emile): a bot can have multiple archs/bits, figure out what to do then
+			// I've just gone and used the first one, as a bot alwas has at least one...
+			// ...it has right?
+			runtimeBots[i].ArchName = bot.Archs[0].Name
+			runtimeBots[i].BitsName = bot.Bits[0].Name
 
 			// define the command used to assemble the bot
 			src := strings.ReplaceAll(bot.Source, "\r\n", "; ")
@@ -1213,14 +1464,8 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO(emile): [L] implement some kind of queue
 
 		// TODO(emile): [S] use the information given from the battle, such as the right arch and bits
-		cmd := "e asm.arch=arm"
-		output, _ := r2cmd(r2p1, cmd)
-		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
 
-		cmd = "e asm.bits=32"
-		output, _ = r2cmd(r2p1, cmd)
-		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
-
+		rawOutput += "[0x00000000]> # initializing the vm and the stack\n"
 		cmd = "aei"
 		output, _ = r2cmd(r2p1, cmd)
 		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
@@ -1230,32 +1475,55 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 		rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
 
 		// TODO(emile): random offsets
+		// place bots
 		for i, s := range botSources {
-			log.Printf("writing bot %d to 0x%d", i, 50*(i+1))
-			cmd := fmt.Sprintf("wx %s @ 0x%d", s, 50*(i+1))
+
+			// the address to write the bot to
+			addr := 50 * (i + 1)
+
+			// store it
+			runtimeBots[i].BaseAddr = addr
+
+			msg := fmt.Sprintf("# writing bot %d to 0x%d", i, addr)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", msg)
+			cmd := fmt.Sprintf("wx %s @ 0x%d", s, addr)
 			_, _ = r2cmd(r2p1, cmd)
 			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+			// define the instruction point and the stack pointer
+			rawOutput += "[0x00000000]> # Setting the program counter and the stack pointer\n"
+			cmd = fmt.Sprintf("aer PC=0x%d", addr)
+			_, _ = r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+			cmd = fmt.Sprintf("aer SP=SP+0x%d", addr)
+			_, _ = r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+			// dump the registers of the bot for being able to switch inbetween them
+			// This is done in order to be able to play one step of each bot at a time,
+			// but sort of in parallel
+			rawOutput += "[0x00000000]> # Storing registers\n"
+			cmd = "aerR"
+			regs, _ := r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+
+			initialRegisers := strings.Replace(regs, "\n", ";", -1)
+			runtimeBots[i].Regs = initialRegisers
 		}
 
-		// print the memory for some pleasing visuals
-		cmd = fmt.Sprintf("pxc 100 @ 0x50")
-		output, _ = r2cmd(r2p1, cmd) // print
-		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
-		fmt.Println(output)
-
-		// init stack
-		cmd = "aer PC = 0x50"
-		_, _ = r2cmd(r2p1, cmd)
-		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
-
-		cmd = "aer SP = SP + 0x50"
-		_, _ = r2cmd(r2p1, cmd)
-		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
+		for i := range botSources {
+			// print the memory for some pleasing visuals
+			cmd = fmt.Sprintf("pxc 100 @ 0x%d", runtimeBots[i].BaseAddr)
+			output, _ = r2cmd(r2p1, cmd) // print
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s\n", cmd, output)
+		}
 
 		output, _ = r2cmd(r2p1, "pxc 100 @ 0x50") // print
 		fmt.Println(output)
 
 		// define end conditions
+		rawOutput += "[0x00000000]> # Defining the end conditions\n"
 		cmd = "e cmd.esil.todo=t theend=1"
 		_, _ = r2cmd(r2p1, cmd)
 		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
@@ -1270,35 +1538,76 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
 
 		// set the end condition to 0 initially
+		rawOutput += "[0x00000000]> # Initializing the end condition variable\n"
 		cmd = "f theend=0"
 		_, _ = r2cmd(r2p1, cmd)
 		rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
 
-		// TODO(emile): find a sensible default for the max amount of rounds
-		for i := 0; i < 1000; i++ {
+		currentBotId := 0
 
-			// this is architecture agnostic and just outputs the program counter
+		// TODO(emile): find a sensible default for the max amount of rounds
+		for i := 0; i < fullDeepBattle.MaxRounds; i++ {
+
+			currentBotId = i % 2
+
 			rawOutput += fmt.Sprintf("[0x00000000]> ########################################################################\n")
+
+			// this is architecture agnostic and just gets the program counter
 			pc, _ := r2cmd(r2p1, "aer~$(arn PC)~[1]")
+
 			arch, _ := r2cmd(r2p1, "e asm.arch")
 			bits, _ := r2cmd(r2p1, "e asm.bits")
-			rawOutput += fmt.Sprintf("[0x00000000]> # ROUND %d, PC=%s, arch=%s, bits=%s\n", i, pc, arch, bits)
+			rawOutput += fmt.Sprintf("[0x00000000]> # ROUND %d, BOT %d (%s), PC=%s, arch=%s, bits=%s\n", i, currentBotId, runtimeBots[currentBotId].Name, pc, arch, bits)
+
+			rawOutput += "[0x00000000]> # setting the architecture accordingly\n"
+			cmd = fmt.Sprintf("e asm.arch=%s", runtimeBots[currentBotId].ArchName)
+			output, _ = r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
+
+			cmd = fmt.Sprintf("e asm.bits=%s", runtimeBots[currentBotId].BitsName)
+			output, _ = r2cmd(r2p1, cmd)
+			rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
+
+			// load registers
+			rawOutput += "[0x00000000]> # Loading the registers\n"
+			r2cmd(r2p1, runtimeBots[currentBotId].Regs)
+			//  rawOutput += fmt.Sprintf("%+v\n", runtimeBots[currentBotId].Regs)
+
+			//  cmd = "dr"
+			//  output, _ = r2cmd(r2p1, cmd)
+			//  rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s\n", cmd, output)
 
 			//  _, _ = r2cmd(r2p1, "aes") // step
+			rawOutput += "[0x00000000]> # Stepping\n"
 			cmd = "aes"
 			_, _ = r2cmd(r2p1, cmd)
 			rawOutput += fmt.Sprintf("[0x00000000]> %s\n", cmd)
 
+			// store the regisers
+			rawOutput += "[0x00000000]> # Storing the registers\n"
+			registers, _ := r2cmd(r2p1, "aerR")
+			registersStripped := strings.Replace(registers, "\n", ";", -1)
+			runtimeBots[currentBotId].Regs = registersStripped
+
 			// print the arena
-			cmd := "pxc 100 @ 0x50"
+			rawOutput += "[0x00000000]> # Printing the arena\n"
+			cmd := fmt.Sprintf("pxc 100 @ 0x%d", runtimeBots[currentBotId].BaseAddr)
 			output, _ := r2cmd(r2p1, cmd) // print
 			rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s\n", cmd, output)
-			fmt.Println(output)
+			//  fmt.Println(output)
 
-			// TODO(emile): restore state
+			// predicate - the end?
+			rawOutput += "[0x00000000]> # Checking if we've won\n"
+			pend, _ := r2cmd(r2p1, "?v theend")
+			status := strings.TrimSpace(pend)
+			// fixme: on Windows, we sometimes get output *from other calls to r2*
 
-			// TODO(emile): check the end condition
-			_, _ = r2cmd(r2p1, "?v 1+theend") // check end condition
+			if status == "0x1" {
+				log.Printf("[!] Bot %d has died", currentBotId)
+			}
+			if status != "0x0" {
+				log.Printf("[!] Got invalid status '%s' for bot %d", status, currentBotId)
+			}
 		}
 
 		BattleSaveRawOutput(battleid, rawOutput)

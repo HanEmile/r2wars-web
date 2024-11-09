@@ -19,7 +19,7 @@
 
   <table>
     <tbody>
-      <form id="battle" method="POST" action="/battle/{{ .battle.ID }}">
+      <form id="save" method="POST" action="/battle/{{ .battle.ID }}">
         <tr>
           <td><label for="name">Name:</label></td>
           <td><input class="border" type="text" id="name" name="name" value="{{ .battle.Name }}"></td>
@@ -55,13 +55,6 @@
           </td>
         </tr>
         -->
-
-        <tr>
-          <td><label for="bots">Bots submitted:</label></td>
-          <td>
-            {{ range $idx, $bot := .battle.Bots }}{{if $idx}},{{end}}<a href="/bot/{{ $bot.ID }}">{{ $bot.Name }}</a>{{ end }}
-          </td>
-        </tr>
 
         <!--
         <tr>
@@ -100,92 +93,118 @@
         </tr>
 
         <tr>
-          <td></td>
+          <td>Arena size:</td>
           <td>
-            <table>
-              <tr>
-                <td style="width: 33%;"><input class="border" type="submit" value="Save"></td>
-                <td style="width: 33%;"></td>
-                <td style="width: 33%; ">
-                  <!--<input type="submit" value="Delete this battle" form="delete" style="border: 1px solid red; ">-->
-                </td>
-              </tr>
+            <input class="border" type="number" name="arena-size" id="arena-size" value="{{ .battle.ArenaSize }}"/>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Max Rounds:</td>
+          <td>
+            <input class="border" type="number" name="max-rounds" id="max-rounds" value="100"/>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Owners</td>
+          <td>
+            {{ $viewerID := .user.ID }}
+            {{ $owners := .battle.Owners }}
+            {{ range $idx, $u := .users}}{{if $idx}},{{- end}}
+              <input
+                type="checkbox"
+                class="check-with-label"
+                name="owner-{{ $u.ID }}"
+                id="owner-{{ $u.ID }}"
+                {{if eq $u.ID $viewerID}}{{end}}
+
+                {{ range $idx, $own := $owners }}
+                  {{if eq $u.ID $own.ID}}checked{{end}}
+                {{ end }}
+                />
+              <label class="label-for-check" for="owner-{{ $u.ID }}">{{$u.Name}}</label>
+            {{- end }}
+          </td>
+        </tr>
+      </form>
+
+      <tr>
+        <td></td>
+        <td width="100%">
+          <div style="display: grid; grid-template-columns: 32% 32% 32%; justify-content: space-between;">
+            <input class="border" type="submit" value="Save Settings" form="save" style="padding: 0 1ex; width: 100%">
+            <input class="border" type="submit" value="Run Battle" form="run" style="border: width: 100%">
+            <input class="border" type="submit" value="Delete this battle" form="delete" style="border: 1px solid red; background: red; color: white; width: 100%">
+          </div>
+        </td>
+      </tr>
+
+      {{ if .res }}
+      <tr>
+        <td></td>
+        <td><div style="border: 1px solid blue; padding: 1ex">{{ .res }}</div></td>
+      </tr>
+      {{ end }}
+
+      <tr>
+        <td><br><hr><br></td>
+        <td><br><hr><br></td>
+      </tr>
+
+      {{ if .myBots }}
+
+      <form id="submit" method="POST" action="/battle/{{ .battle.ID }}/submit">
+        <tr>
+          <td><label for="name">My Bots</label></td>
+          <td style="width: 100%;">
+            <table style="width: 100%;">
+                {{ range $bot := .myBots  }}
+                <tr class="trhover">
+                  <td style="text-align: center; vertical-align: middle; width: 2ex;">
+                    <input
+                      type="checkbox"
+                      id="bot-{{$bot.ID}}"
+                      name="bot-{{$bot.ID}}"
+                      value="{{$bot.ID}}"
+                      {{ range $bbot := $.battle.Bots }}
+                      {{ if eq $bot.ID $bbot.ID }}checked{{ end }}
+                      {{ end }}
+                      />
+                    <label for="bot-{{$bot.ID}}">
+                      <a href="/bot/{{$bot.ID}}">{{$bot.Name}}</a>
+                    </label>
+                  </td>
+                  <td style="vertical-align: middle">
+                  </td>
+                </tr>
+                {{ end }}
             </table>
           </td>
         </tr>
       </form>
 
+      <form id="run" method="POST" action="/battle/{{ .battle.ID }}/run"> </form>
+      <form id="delete" method="POST" action="/battle/{{ .battle.ID }}/delete"></form>
 
-    {{ if .res }}
-    <tr>
-      <td></td>
-      <td><div style="border: 1px solid blue; padding: 1ex">{{ .res }}</div></td>
-    </tr>
-    {{ end }}
-
-    <tr>
-      <td><br><hr><br></td>
-      <td><br><hr><br></td>
-    </tr>
-
-    {{ if .myBots }}
-
-    <form method="POST" action="/battle/{{ .battle.ID }}/submit">
       <tr>
-        <td><label for="name">My Bots</label></td>
-        <td style="width: 100%;">
-          <table style="width: 100%;">
-              {{ range $bot := .myBots  }}
-              <tr class="trhover">
-                <td style="text-align: center; vertical-align: middle; width: 2ex;">
-                  <input
-                    type="checkbox"
-                    id="bot-{{$bot.ID}}"
-                    name="bot-{{$bot.ID}}"
-                    value="{{$bot.ID}}"
-                    {{ range $bbot := $.battle.Bots }}
-                    {{ if eq $bot.ID $bbot.ID }}checked{{ end }}
-                    {{ end }}
-                    />
-                  <label for="bot-{{$bot.ID}}">
-                    <a href="/bot/{{$bot.ID}}">{{$bot.Name}}</a>
-                  </label>
-                </td>
-                <td style="vertical-align: middle">
-                </td>
-              </tr>
-              {{ end }}
-          </table>
+        <td></td>
+        <td width="100%">
+          <div style="display: grid; grid-template-columns: 100%; justify-content: space-between;">
+            <input class="border" type="submit" value="Submit Bots" form="submit" style="width: 100%">
+          </div>
         </td>
       </tr>
+
+      {{ else }}
       <tr>
-        <td colspan="5"><input class="border" type="submit" value="Submit bots"></td>
+        <td></td>
+        <td><a href='/bot/new'>Upload a bot</a> to get started!</td>
       </tr>
-    </form>
-
-    {{ else }}
-
-    <tr>
-      <td></td>
-      <td><a href='/bot/new'>Upload a bot</a> to get started!</td>
-    </tr>
-
-    {{ end }}
+      {{ end }}
 
     </tbody>
   <table>
-
-  <br>
-
-  <form method="POST" action="/battle/{{ .battle.ID }}/run">
-    <input class="border" type="submit" value="Run the Battle">
-  </form>
-
-  <br><br>
-
-  <form id="delete" method="POST" action="/battle/{{ .battle.ID }}/delete">
-    <input type="submit" value="Delete this battle" form="delete" style="border: 1px solid red; ">
-  </form>
 
   <span id="registered bots"></span>
   <h2><a href="#registered-bots">Registered Bots</a></h2>
@@ -194,13 +213,13 @@
 
   <span id="output"></span>
   <h2><a href="#output">Output</a></h2>
-
+  <!--<details>-->
   <pre>{{ .battle.RawOutput }}</pre>
+  <!--</details>-->
 
   <span id="debug"></span>
   <h2><a href="#debug">Debug</a></h2>
+  <details> <pre>{{ . }}</pre> </details> </body>
 
-  <pre>{{ .battle }}</pre>
-</body>
 {{ template "footer" . }}
 {{ end }}

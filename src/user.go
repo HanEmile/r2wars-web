@@ -71,6 +71,10 @@ func UserGetAll() ([]User, error) {
 	return globalState.GetAllUsers()
 }
 
+func UserGetUsernameCount(username string) (int, error) {
+	return globalState.GetUsernameCount(username)
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // DATABASE
 
@@ -227,6 +231,29 @@ func (s *State) GetAllUsers() ([]User, error) {
 	return users, nil
 }
 
+func (s *State) GetUsernameCount(username string) (int, error) {
+	rows, err := s.db.Query(`
+		SELECT COUNT(*)
+		FROM users
+		WHERE name=?`, username)
+	defer rows.Close()
+	if err != nil {
+		return -1, err
+	}
+
+	var count int
+	rows.Next()
+	if err := rows.Scan(&count); err != nil {
+		return -1, err
+	}
+	if err = rows.Err(); err != nil {
+		return -1, err
+	}
+	return count, nil
+}
+
+//  return globalState.GetUsernameCount(username)
+
 //////////////////////////////////////////////////////////////////////////////
 // HTTP
 
@@ -380,6 +407,13 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		if password1 != password2 {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - Oi', Backend here! The passwords you entered don't match!"))
+			return
+		}
+
+		// Fetch all users and check that there isn't another user with the name here
+		if _, err := UserGetUsernameCount(username); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Oi', Backend here! That username has already been taken!"))
 			return
 		}
 

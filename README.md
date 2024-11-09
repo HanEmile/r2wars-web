@@ -63,11 +63,11 @@ There are essentially the following objects which are all linked to each other (
 
 - [ ] Add user creating battle as default owner
 - [ ] Allow adding other users as owners to battles
-- [ ] Implement submitting bots
-- [ ] Implement running the battle
-- [ ] Add a "start battle now" button
+- [x] Implement submitting bots
+- [x] Implement running the battle
+- [x] Add a "start battle now" button
 - [ ] Add a "battle starts at this time" field into the battle
 - [ ] Figure out how time is stored and restored with the db
-- [ ] Do some magic to display the current fight backlog with all info
+- [x] Do some magic to display the current fight backlog with all info
 - [ ] After having added a bot to a battle with the right arch, the arch can be changed
       When updating the bot, make sure that it is still valid in all currently linked battles

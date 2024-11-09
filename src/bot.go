@@ -111,21 +111,14 @@ func (s *State) GetBotById(id int) (Bot, error) {
 
 	WHERE bo.id=?
 	GROUP BY bo.id;
-	`, id).Scan(&botid, &botname, &botsource, &ownerids, &ownernames, &archids, &archnames, &bitids, &bitnames)
+	`, id).Scan(&botid, &botname, &botsource,
+		&ownerids, &ownernames,
+		&archids, &archnames,
+		&bitids, &bitnames)
 	if err != nil {
 		log.Println(err)
 		return Bot{}, err
 	}
-
-	// log.Println("botid: ", botid)
-	// log.Println("botname: ", botname)
-	// log.Println("botsource: ", botsource)
-	// log.Println("ownerids: ", ownerids)
-	// log.Println("ownernames: ", ownernames)
-	// log.Println("archid: ", archids)
-	// log.Println("archname: ", archnames)
-	// log.Println("bitid: ", bitids)
-	// log.Println("bitname: ", bitnames)
 
 	ownerIDList := strings.Split(ownerids, ",")
 	ownerNameList := strings.Split(ownernames, ",")
@@ -181,6 +174,7 @@ func (s *State) GetBotById(id int) (Bot, error) {
 		log.Println("ERR4: ", err)
 		return Bot{}, err
 	default:
+		//  log.Printf("returning bot with archs %+v and bits %+v", archs, bits)
 		return Bot{botid, botname, botsource, users, archs, bits}, nil
 	}
 }
