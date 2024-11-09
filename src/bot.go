@@ -451,6 +451,9 @@ func botSingleHandler(w http.ResponseWriter, r *http.Request) {
 		src := strings.ReplaceAll(bot.Source, "\r\n", "; ")
 		radareCommand := fmt.Sprintf("rasm2 -a %s -b %s \"%+v\"", bot.Archs[0].Name, bot.Bits[0].Name, src)
 		bytecode, err := r2cmd(r2p1, radareCommand)
+		if err == nil && len(bytecode) == 0 {
+			err = fmt.Errorf("rasm2 failed")
+		}
 		if err != nil {
 			data["err"] = "Error assembling the bot"
 			http.Redirect(w, r, fmt.Sprintf("/bot/%d", botid), http.StatusSeeOther)
