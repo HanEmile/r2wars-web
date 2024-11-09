@@ -1463,8 +1463,6 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 
 		// TODO(emile): [L] implement some kind of queue
 
-		// TODO(emile): [S] use the information given from the battle, such as the right arch and bits
-
 		rawOutput += "[0x00000000]> # initializing the vm and the stack\n"
 		cmd = "aei"
 		output, _ = r2cmd(r2p1, cmd)
@@ -1552,6 +1550,9 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 
 			rawOutput += fmt.Sprintf("[0x00000000]> ########################################################################\n")
 
+			rawOutput += "[0x00000000]> # Loading the registers\n"
+			r2cmd(r2p1, runtimeBots[currentBotId].Regs)
+
 			// this is architecture agnostic and just gets the program counter
 			pc, _ := r2cmd(r2p1, "aer~$(arn PC)~[1]")
 
@@ -1569,8 +1570,6 @@ func battleRunHandler(w http.ResponseWriter, r *http.Request) {
 			rawOutput += fmt.Sprintf("[0x00000000]> %s\n%s", cmd, output)
 
 			// load registers
-			rawOutput += "[0x00000000]> # Loading the registers\n"
-			r2cmd(r2p1, runtimeBots[currentBotId].Regs)
 			//  rawOutput += fmt.Sprintf("%+v\n", runtimeBots[currentBotId].Regs)
 
 			//  cmd = "dr"
